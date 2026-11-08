@@ -1,0 +1,70 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "author": {
+    "email": "baber1392@gmail.com",
+    "name": "Danial Rahimi"
+  },
+  "description": "دستیار واحد و خصوصی دانیال برای مدیریت امن دفتر وکالت ایران، پژوهش و استخراج وب با Firecrawl، مدیریت پرونده‌ها و اسناد، تحلیل و نگارش حقوقی و هماهنگی ابزارهای متصل.",
+  "extensions": {
+    "com.openai": {
+      "apps": "./.app.json",
+      "interface": {
+        "capabilities": [
+          "Research",
+          "Document analysis",
+          "Writing",
+          "Interactive"
+        ],
+        "category": "Legal",
+        "defaultPrompt": [
+          "پرونده‌ها و اسناد ارائه‌شده را با حفظ استقلال هر پرونده سامان‌دهی و از منظر حقوق جمهوری اسلامی ایران تحلیل کن.",
+          "برای پژوهش وب از Firecrawl جهت جست‌وجو، استخراج و گردآوری منابع عمومی استفاده کن؛ منابع رسمی حقوق ایران را در اولویت قرار بده و هر استناد را راستی‌آزمایی کن.",
+          "قوانین، آرای وحدت رویه، آرای مشابه و نظریات مشورتی را از منابع رسمی بررسی و فقط استنادهای راستی‌آزمایی‌شده ارائه کن.",
+          "پیش‌نویس قضایی موردنیاز را با رعایت سمت، منشأ اسناد، محرمانگی و ترجیحات نگارشی تهیه کن.",
+          "اسناد و وضعیت سرویس‌ها را فقط با ابزارهای متصل و مجاز بررسی کن و نتیجه آزموده‌نشده را قطعی اعلام نکن."
+        ],
+        "developerName": "Danial Rahimi",
+        "displayName": "دستیار یکپارچه دانیال",
+        "longDescription": "افزونه خصوصی دفتر وکالت دانیال: مدیریت تفکیکی پرونده‌ها و ادله، تحلیل و راهبرد حقوقی، پژوهش قوانین و آرای قضایی ایران، جست‌وجو و استخراج صفحات عمومی با Firecrawl، نگارش لوایح، کنترل مواعد، امور ثبتی و مالی، و هماهنگی سرویس‌های متصل. منابع رسمی قضایی ایران در اولویت‌اند؛ Firecrawl ابزار کشف و استخراج است و به‌تنهایی اعتبار یا رسمی‌بودن منبع را اثبات نمی‌کند. هیچ رمز یا توکن محرمانه‌ای ذخیره نمی‌شود و اتصال به ثنا تا وجود API رسمی و مجوز معتبر دستی باقی می‌ماند.",
+        "shortDescription": "دستیار حقوقی و مدیر یکپارچه دفتر وکالت دانیال با پژوهش وب Firecrawl",
+        "logo": "./assets/danial-legal-assistant.png",
+        "composerIcon": "./assets/danial-legal-assistant.png"
+      }
+    }
+  },
+  "keywords": [
+    "iranian-law",
+    "legal-research",
+    "case-management",
+    "case-archive",
+    "evidence-management",
+    "judicial-decisions",
+    "ara-jri",
+    "divan-edalat",
+    "legal-drafting",
+    "secure-data",
+    "audit-trail",
+    "litigation-strategy",
+    "deadlines",
+    "office-finance",
+    "wolfram",
+    "supabase",
+    "github",
+    "gmail",
+    "appwrite",
+    "render",
+    "dropbox",
+    "document-management",
+    "cloud-files",
+    "email-triage",
+    "privacy",
+    "mobile-pwa",
+    "firecrawl",
+    "web-search",
+    "web-scraping",
+    "legal-source-verification"
+  ],
+  "name": "daftar-khas-unified",
+  "version": "2.3.3",
+  "skills": "./skills"
+}
