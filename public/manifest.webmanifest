@@ -1,0 +1,12 @@
+{
+  "name": "دستیار جامع اختصاصی دانیال",
+  "short_name": "دانیال",
+  "description": "سامانه خصوصی مدیریت دفتر وکالت",
+  "lang": "fa",
+  "dir": "rtl",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f5f6f8",
+  "theme_color": "#10243a",
+  "icons": []
+}
