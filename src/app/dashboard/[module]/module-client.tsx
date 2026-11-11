@@ -177,7 +177,7 @@ function displayValue(value: unknown, key: string) {
     filing: "تقدیم", payment: "پرداخت", follow_up: "پیگیری",
     owner: "مالک دفتر", admin: "مدیر", lawyer: "وکیل", staff: "کارمند",
     accountant: "حسابدار", viewer: "مشاهده‌گر",
-    invited: "دعوت‌شده", active: "فعال", suspended: "معلق",
+    invited: "دعوت‌شده",
   };
   return translations[String(value)] ?? String(value);
 }
