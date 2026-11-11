@@ -2,14 +2,17 @@ services:
   - type: web
     name: danial-legal-assistant
     runtime: node
-    plan: starter
-    branch: rebuild/nextjs-foundation
-    buildCommand: npm install && npm run build
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: npm install --no-audit --no-fund && npm run typecheck && npm run build
     startCommand: npm start
-    healthCheckPath: /login
-    autoDeploy: false
+    healthCheckPath: /api/health
+    autoDeploy: true
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: NEXT_PUBLIC_SUPABASE_URL
-        sync: false
-      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        value: https://jwhyeohqolabcbuwhfon.supabase.co
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
         sync: false
