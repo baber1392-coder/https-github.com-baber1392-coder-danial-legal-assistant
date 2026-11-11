@@ -5,8 +5,11 @@
   "lang": "fa",
   "dir": "rtl",
   "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f5f6f8",
   "theme_color": "#10243a",
-  "icons": []
+  "icons": [
+    { "src": "/icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any maskable" }
+  ]
 }
