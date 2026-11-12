@@ -38,13 +38,25 @@ export default async function ModulePage({ params }: { params: Promise<{ module:
   }
 
   let rows = (data ?? []) as Record<string, unknown>[];
+  let caseAssignments: {
+    id: string; user_id: string; case_id: string;
+    can_read: boolean; can_update: boolean; can_upload: boolean;
+  }[] = [];
   if (module === "settings") {
     const memberIds = rows.map((row) => String(row.user_id));
-    const { data: profiles } = memberIds.length
-      ? await supabase.from("profiles").select("id,display_name").in("id", memberIds)
-      : { data: [] as { id: string; display_name: string | null }[] };
-    const names = new Map((profiles ?? []).map((profile) => [profile.id, profile.display_name]));
+    const [profilesResult, assignmentsResult] = await Promise.all([
+      memberIds.length
+        ? supabase.from("profiles").select("id,display_name").in("id", memberIds)
+        : Promise.resolve({ data: [] as { id: string; display_name: string | null }[] }),
+      supabase.from("case_user_access")
+        .select("id,user_id,case_id,can_read,can_update,can_upload")
+        .eq("office_id", office.id)
+        .order("created_at", { ascending: false })
+        .limit(200),
+    ]);
+    const names = new Map((profilesResult.data ?? []).map((profile) => [profile.id, profile.display_name]));
     rows = rows.map((row) => ({ ...row, display_name: names.get(String(row.user_id)) ?? "نام ثبت نشده" }));
+    caseAssignments = (assignmentsResult.data ?? []) as typeof caseAssignments;
   }
   if (module === "documents") {
     const { data: caseRows } = await supabase.from("cases").select("id,title,case_number").eq("office_id", office.id);
@@ -90,6 +102,7 @@ export default async function ModulePage({ params }: { params: Promise<{ module:
         userId={user.id}
         role={role}
         caseOptions={caseOptions}
+        caseAssignments={caseAssignments}
       />
     </main>
   );
