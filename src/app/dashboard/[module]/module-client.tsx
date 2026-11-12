@@ -203,7 +203,11 @@ export default function ModuleClient({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedCase, setSelectedCase] = useState("");
   const [notes, setNotes] = useState("");
-  const [fileInputKey, setFileInputKey] = useState(0);\n  const [documentType, setDocumentType] = useState("other");\n  const [inviteRole, setInviteRole] = useState("staff");\n  const [inviteCode, setInviteCode] = useState("");\n  const [redeemCode, setRedeemCode] = useState("");
+  const [fileInputKey, setFileInputKey] = useState(0);
+  const [documentType, setDocumentType] = useState("other");
+  const [inviteRole, setInviteRole] = useState("staff");
+  const [inviteCode, setInviteCode] = useState("");
+  const [redeemCode, setRedeemCode] = useState("");
 
   useEffect(() => { setLocalRows(rows); }, [rows]);
   useEffect(() => {
