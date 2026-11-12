@@ -38,6 +38,14 @@ export default async function ModulePage({ params }: { params: Promise<{ module:
   }
 
   let rows = (data ?? []) as Record<string, unknown>[];
+  if (module === "settings") {
+    const memberIds = rows.map((row) => String(row.user_id));
+    const { data: profiles } = memberIds.length
+      ? await supabase.from("profiles").select("id,display_name").in("id", memberIds)
+      : { data: [] as { id: string; display_name: string | null }[] };
+    const names = new Map((profiles ?? []).map((profile) => [profile.id, profile.display_name]));
+    rows = rows.map((row) => ({ ...row, display_name: names.get(String(row.user_id)) ?? "نام ثبت نشده" }));
+  }
   if (module === "documents") {
     const { data: caseRows } = await supabase.from("cases").select("id,title,case_number").eq("office_id", office.id);
     const caseMap = new Map((caseRows ?? []).map((item) => [item.id, item]));
