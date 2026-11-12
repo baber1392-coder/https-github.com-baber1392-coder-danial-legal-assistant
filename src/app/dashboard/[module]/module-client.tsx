@@ -256,6 +256,10 @@ export default function ModuleClient({
   const [inviteRole, setInviteRole] = useState("staff");
   const [inviteCode, setInviteCode] = useState("");
   const [redeemCode, setRedeemCode] = useState("");
+  const [accessMemberId, setAccessMemberId] = useState("");
+  const [accessCaseId, setAccessCaseId] = useState("");
+  const [accessCanUpdate, setAccessCanUpdate] = useState(false);
+  const [accessCanUpload, setAccessCanUpload] = useState(false);
 
   useEffect(() => { setLocalRows(rows); }, [rows]);
   useEffect(() => {
@@ -331,6 +335,10 @@ export default function ModuleClient({
       setMessage("ابتدا فایل موردنظر را انتخاب کنید.");
       return;
     }
+    if (!selectedCase) {
+      setMessage("انتخاب پرونده مرتبط الزامی است.");
+      return;
+    }
     if (selectedFile.size <= 0 || selectedFile.size > 50 * 1024 * 1024) {
       setMessage("حجم فایل باید بیشتر از صفر و حداکثر ۵۰ مگابایت باشد.");
       return;
@@ -339,7 +347,7 @@ export default function ModuleClient({
     setBusy(true);
     setMessage("");
     const safeName = selectedFile.name.replace(/[^\p{L}\p{N}._-]+/gu, "_").slice(0, 180) || "document";
-    const path = officeId + "/" + crypto.randomUUID() + "/" + safeName;
+    const path = officeId + "/" + selectedCase + "/" + crypto.randomUUID() + "/" + safeName;
     try {
       const { error: uploadError } = await supabase.storage
         .from("case-documents")
@@ -396,18 +404,73 @@ export default function ModuleClient({
     }
   }
 
+  async function grantCaseAccess(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!accessMemberId || !accessCaseId) {
+      setMessage("انتخاب وکیل و پرونده الزامی است.");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      const { error } = await (supabase as any).from("case_user_access").upsert({
+        office_id: officeId,
+        case_id: accessCaseId,
+        user_id: accessMemberId,
+        can_read: true,
+        can_update: accessCanUpdate,
+        can_upload: accessCanUpload,
+        granted_by: userId,
+      }, { onConflict: "case_id,user_id" });
+      if (error) throw new Error(error.message);
+      setMessage("دسترسی پرونده‌ای ثبت شد.");
+      setAccessCanUpdate(false);
+      setAccessCanUpload(false);
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "ثبت دسترسی انجام نشد.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (memberOnly) {
+    const lawyers = localRows.filter((row) => row.role === "lawyer" && row.status === "active");
     return (
-      <section className="card">
-        <h2 className="font-bold mb-3">اعضای دفتر</h2>
-        <p className="text-sm text-slate-500 leading-7 mb-4">در حال حاضر این بخش فقط اطلاعات عضویت و نقش‌ها را نمایش می‌دهد. اعطای دسترسی جدید نیازمند گردش‌کار دعوت و تأیید مجزا است.</p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr>{columns.map((key) => <th className="text-right p-3 border-b" key={key}>{config.labels[key] ?? key}</th>)}</tr></thead>
-            <tbody>{localRows.map((row) => <tr key={String(row.id)}>{columns.map((key) => <td className="p-3 border-b border-slate-100" key={key}>{displayValue(row[key], key)}</td>)}</tr>)}</tbody>
-          </table>
-        </div>
-      </section>
+      <div className="space-y-5">
+        <section className="card">
+          <h2 className="font-bold mb-3">اعضای دفتر</h2>
+          <p className="text-sm text-slate-500 leading-7 mb-4">فهرست اعضا و نقش‌های ثبت‌شده در دفتر.</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr>{columns.map((key) => <th className="text-right p-3 border-b" key={key}>{config.labels[key] ?? key}</th>)}</tr></thead>
+              <tbody>{localRows.map((row) => <tr key={String(row.id)}>{columns.map((key) => <td className="p-3 border-b border-slate-100" key={key}>{displayValue(row[key], key)}</td>)}</tr>)}</tbody>
+            </table>
+          </div>
+        </section>
+        <section className="card">
+          <h2 className="font-bold mb-2">تخصیص دسترسی پرونده‌ای</h2>
+          <p className="text-sm text-slate-500 leading-7 mb-4">وکیل فقط پرونده‌هایی را مشاهده می‌کند که در این بخش به حساب او تخصیص داده شده باشد. دسترسی خواندن به‌صورت پیش‌فرض فعال است.</p>
+          <form onSubmit={grantCaseAccess} className="grid md:grid-cols-2 gap-4">
+            <label className="field-label">وکیل
+              <select required value={accessMemberId} onChange={(event) => setAccessMemberId(event.target.value)} className="field-input">
+                <option value="">انتخاب وکیل</option>
+                {lawyers.map((row) => <option key={String(row.user_id)} value={String(row.user_id)}>{String(row.user_id)}</option>)}
+              </select>
+            </label>
+            <label className="field-label">پرونده
+              <select required value={accessCaseId} onChange={(event) => setAccessCaseId(event.target.value)} className="field-input">
+                <option value="">انتخاب پرونده</option>
+                {caseOptions.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={accessCanUpdate} onChange={(event) => setAccessCanUpdate(event.target.checked)} /> اجازه ویرایش اطلاعات پرونده</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={accessCanUpload} onChange={(event) => setAccessCanUpload(event.target.checked)} /> اجازه بارگذاری اسناد</label>
+            <div className="md:col-span-2"><button disabled={busy} className="rounded-xl bg-[#10243a] text-white px-5 py-3 disabled:opacity-60">{busy ? "در حال ثبت..." : "ثبت دسترسی"}</button></div>
+          </form>
+          {message && <p role="status" className="text-sm mt-3 text-slate-600">{message}</p>}
+        </section>
+      </div>
     );
   }
 
