@@ -18,7 +18,7 @@ const navigation = [
 ];
 
 function formatTehran(value: string) {
-  return new Intl.DateTimeFormat("fa-IR", {
+  return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
     dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Tehran",
   }).format(new Date(value));
 }
