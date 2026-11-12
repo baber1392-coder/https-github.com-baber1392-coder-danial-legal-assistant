@@ -32,7 +32,7 @@ export default async function ModulePage({ params }: { params: Promise<{ module:
   }
 
   let caseOptions: { id: string; title: string }[] = [];
-  if (module === "documents" || module === "deadlines") {
+  if (module === "documents" || module === "deadlines" || module === "settings") {
     const { data: cases } = await supabase.from("cases").select("id,title").eq("office_id", office.id).order("created_at", { ascending: false }).limit(500);
     caseOptions = cases ?? [];
   }
