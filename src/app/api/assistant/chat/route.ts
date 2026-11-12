@@ -123,9 +123,10 @@ export async function POST(request: NextRequest) {
   const context = await getOfficeContext();
   if (isResponse(context)) return context;
 
-  if (!process.env.OPENAI_API_KEY) {
+  const provider = process.env.GEMINI_API_KEY ? "gemini" : process.env.OPENAI_API_KEY ? "openai" : null;
+  if (!provider) {
     return NextResponse.json(
-      { error: "اتصال مدل هوش مصنوعی هنوز پیکربندی نشده است. مدیر سامانه باید OPENAI_API_KEY را در متغیرهای محرمانه Render ثبت کند." },
+      { error: "مدل هوش مصنوعی پیکربندی نشده است. برای فعال‌سازی طرح رایگان، مدیر سامانه باید GEMINI_API_KEY را در Environment سرویس Render ثبت کند." },
       { status: 503 }
     );
   }
@@ -254,62 +255,112 @@ export async function POST(request: NextRequest) {
     content: item.content,
   }));
 
-  const model = process.env.OPENAI_MODEL || "gpt-6-astra";
+  const model = provider === "gemini"
+    ? (process.env.GEMINI_MODEL || "gemini-2.5-flash")
+    : (process.env.OPENAI_MODEL || "gpt-6-astra");
   const useWebSearch = body.useWebSearch === true;
-  const payload: Record<string, unknown> = {
-    model,
-    instructions: SYSTEM_INSTRUCTIONS + (caseContext ? "\n\n" + caseContext : ""),
-    input,
-    store: false,
-    max_output_tokens: 3000,
-  };
-  if (useWebSearch) payload.tools = [{ type: "web_search" }];
-
   let assistantText = "";
+
   try {
-    const apiResponse = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-      cache: "no-store",
-      signal: AbortSignal.timeout(90000),
-    });
+    if (provider === "gemini") {
+      const contents = input.map((item) => ({
+        role: item.role === "assistant" ? "model" : "user",
+        parts: [{ text: item.content }],
+      }));
+      const apiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "x-goog-api-key": process.env.GEMINI_API_KEY as string,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: SYSTEM_INSTRUCTIONS + (caseContext ? "\\n\\n" + caseContext : "") }],
+            },
+            contents,
+            generationConfig: { maxOutputTokens: 3000, temperature: 0.2 },
+          }),
+          cache: "no-store",
+          signal: AbortSignal.timeout(90000),
+        }
+      );
 
-    const result = await apiResponse.json();
-    if (!apiResponse.ok) {
-      const apiMessage = typeof result?.error?.message === "string" ? result.error.message : "خطای نامشخص در سرویس هوش مصنوعی";
-      console.error("OpenAI API request failed", { status: apiResponse.status, message: apiMessage });
-      if (apiResponse.status === 429 && /no credits remaining|insufficient_quota|credit_balance_exhausted/i.test(apiMessage)) {
-        return NextResponse.json(
-          { error: "اعتبار API حساب OpenAI تمام شده است. اشتراک رایگان ChatGPT شامل اعتبار API برای این وب‌سایت نیست؛ برای ادامه باید اعتبار API جداگانه تهیه شود یا یک ارائه‌دهنده دارای طرح رایگان پیکربندی شود." },
-          { status: 429 }
-        );
+      const result = await apiResponse.json();
+      if (!apiResponse.ok) {
+        const apiMessage = typeof result?.error?.message === "string" ? result.error.message : "Gemini API error";
+        console.error("Gemini API request failed", { status: apiResponse.status, message: apiMessage });
+        if (apiResponse.status === 429) {
+          return NextResponse.json(
+            { error: "سهمیه رایگان Gemini در حال حاضر به سقف مجاز رسیده است. پس از بازنشانی سهمیه یا در زمان دیگری دوباره تلاش کنید." },
+            { status: 429 }
+          );
+        }
+        if (apiResponse.status === 400 || apiResponse.status === 403) {
+          return NextResponse.json(
+            { error: "کلید Gemini یا دسترسی طرح رایگان معتبر نیست. وضعیت پروژه و سهمیه را در Google AI Studio بررسی کنید." },
+            { status: 502 }
+          );
+        }
+        return NextResponse.json({ error: "سرویس Gemini درخواست را نپذیرفت." }, { status: 502 });
       }
-      if (apiResponse.status === 429) {
-        return NextResponse.json(
-          { error: "محدودیت نرخ درخواست API اعمال شده است. کمی بعد دوباره تلاش کنید." },
-          { status: 429 }
-        );
+
+      assistantText = (result.candidates?.[0]?.content?.parts ?? [])
+        .map((part: { text?: string }) => part.text ?? "")
+        .join("\\n")
+        .trim();
+    } else {
+      const payload: Record<string, unknown> = {
+        model,
+        instructions: SYSTEM_INSTRUCTIONS + (caseContext ? "\\n\\n" + caseContext : ""),
+        input,
+        store: false,
+        max_output_tokens: 3000,
+      };
+      if (useWebSearch) payload.tools = [{ type: "web_search" }];
+
+      const apiResponse = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        cache: "no-store",
+        signal: AbortSignal.timeout(90000),
+      });
+
+      const result = await apiResponse.json();
+      if (!apiResponse.ok) {
+        const apiMessage = typeof result?.error?.message === "string" ? result.error.message : "OpenAI API error";
+        console.error("OpenAI API request failed", { status: apiResponse.status, message: apiMessage });
+        if (apiResponse.status === 429 && /no credits remaining|insufficient_quota|credit_balance_exhausted/i.test(apiMessage)) {
+          return NextResponse.json(
+            { error: "اعتبار API حساب OpenAI تمام شده است. برای ادامه، کلید Gemini با سهمیه رایگان تنظیم کنید یا اعتبار API تهیه شود." },
+            { status: 429 }
+          );
+        }
+        if (apiResponse.status === 429) {
+          return NextResponse.json({ error: "محدودیت نرخ درخواست API اعمال شده است. کمی بعد دوباره تلاش کنید." }, { status: 429 });
+        }
+        return NextResponse.json({ error: "سرویس OpenAI درخواست را نپذیرفت. تنظیم کلید و دسترسی مدل بررسی شود." }, { status: 502 });
       }
-      return NextResponse.json({ error: "سرویس هوش مصنوعی درخواست را نپذیرفت. تنظیم کلید و دسترسی مدل بررسی شود." }, { status: 502 });
+
+      assistantText = (result.output ?? [])
+        .filter((item: { type?: string }) => item.type === "message")
+        .flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content ?? [])
+        .filter((item: { type?: string }) => item.type === "output_text")
+        .map((item: { text?: string }) => item.text ?? "")
+        .join("\\n")
+        .trim();
     }
-
-    assistantText = (result.output ?? [])
-      .filter((item: { type?: string }) => item.type === "message")
-      .flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content ?? [])
-      .filter((item: { type?: string }) => item.type === "output_text")
-      .map((item: { text?: string }) => item.text ?? "")
-      .join("\n")
-      .trim();
 
     if (!assistantText) {
       return NextResponse.json({ error: "پاسخ متنی از مدل دریافت نشد." }, { status: 502 });
     }
   } catch (error) {
-    console.error("OpenAI API network error", error);
+    console.error(`${provider} API network error`, error);
     return NextResponse.json({ error: "ارتباط با سرویس هوش مصنوعی برقرار نشد. اتصال سرور و تنظیمات API بررسی شود." }, { status: 502 });
   }
 
@@ -343,7 +394,9 @@ export async function POST(request: NextRequest) {
     conversationId,
     message: savedAssistant,
     model,
-    webSearchUsed: useWebSearch,
+    provider,
+    webSearchUsed: useWebSearch && provider === "openai",
+    webSearchUnavailable: useWebSearch && provider === "gemini",
     caseContextUsed: Boolean(caseContext),
   });
 }
