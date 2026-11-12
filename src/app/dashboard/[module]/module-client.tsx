@@ -144,7 +144,7 @@ function jalaliParts(date: Date, timeZone = "Asia/Tehran") {
 
 function jalaliDateToGregorian(value: string) {
   const normalized = normalizeDigits(value.trim()).replace(/-/g, "/");
-  const match = normalized.match(/^(\\d{4})\\/(\\d{1,2})\\/(\\d{1,2})$/);
+  const match = normalized.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
   if (!match) throw new Error("تاریخ را به شکل ۱۴۰۵/۰۸/۲۱ وارد کنید.");
   const jy = Number(match[1]), jm = Number(match[2]), jd = Number(match[3]);
   if (jm < 1 || jm > 12 || jd < 1 || jd > 31) throw new Error("تاریخ شمسی معتبر نیست.");
