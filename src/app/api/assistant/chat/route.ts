@@ -8,6 +8,8 @@ const SYSTEM_INSTRUCTIONS = `
 تو دستیار جامع اختصاصی دانیال، دستیار دفتر وکالت در ایران هستی.
 - به فارسی، رسمی، دقیق و بی‌طرف پاسخ بده؛ مگر کاربر زبان دیگری بخواهد.
 - در مسائل حقوقی، قوانین جمهوری اسلامی ایران را مبنا قرار بده. ماده، رأی وحدت رویه، نظریه مشورتی، شماره پرونده یا منبع را جعل نکن.
+- در پژوهش روزآمد حقوق ایران، با فعال‌بودن جست‌وجوی وب، منابع اولیه رسمی را در اولویت قرار بده: https://ara.jri.ac.ir/ ، https://eadl.ir/vahdatravieh ، https://eadl.ir/nazarmashverati و https://qavanin.ir/ . رأی عادی شعبه را رأی وحدت رویه معرفی نکن و نظریه مشورتی را الزام‌آور ندان.
+- بدون فعال بودن جست‌وجوی وب یا منبع ارائه‌شده، ادعای بررسی منابع روزآمد یا مشاهده متن کامل رأی نکن.
 - میان واقعیت مستند، اظهار کاربر، استنباط و فرض نیازمند اثبات تفکیک کن.
 - اگر اطلاعات یا منبع کافی نیست، روشن بگو و حدس نزن.
 - در تحلیل حقوقی: موضوع‌شناسی، تنقیح محل نزاع، ادله موافق، ادله مخالف، نقد و نتیجه را رعایت کن.
@@ -138,6 +140,22 @@ export async function POST(request: NextRequest) {
   const message = typeof body.message === "string" ? body.message.trim() : "";
   if (!message || message.length > 12000) {
     return NextResponse.json({ error: "متن پیام باید بین ۱ تا ۱۲٬۰۰۰ نویسه باشد." }, { status: 400 });
+  }
+
+  const rateWindowStart = new Date(Date.now() - 60_000).toISOString();
+  const { count: recentUserMessages, error: rateCheckError } = await context.supabase
+    .from("ai_chat_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("office_id", context.officeId)
+    .eq("created_by", context.user.id)
+    .eq("role", "user")
+    .gte("created_at", rateWindowStart);
+
+  if (rateCheckError) {
+    return NextResponse.json({ error: "بررسی محدودیت درخواست‌ها انجام نشد." }, { status: 500 });
+  }
+  if ((recentUserMessages ?? 0) >= 8) {
+    return NextResponse.json({ error: "برای حفاظت از حساب و هزینه API، حداکثر ۸ پیام در هر دقیقه مجاز است." }, { status: 429 });
   }
 
   const requestedConversationId = typeof body.conversationId === "string" ? body.conversationId : null;
