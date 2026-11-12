@@ -190,6 +190,7 @@ export default function ModuleClient({
   rows: Row[];
   officeId: string;
   userId: string;
+  role: string;
   caseOptions: CaseOption[];
 }) {
   const config = configs[module];
