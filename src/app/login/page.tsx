@@ -7,7 +7,7 @@ import { Scale, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,7 +18,15 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const { error: signInError } = await createClient().auth.signInWithPassword({ email: email.trim(), password });
+      const rawIdentifier = identifier.normalize("NFC").trim();
+      let loginEmail = rawIdentifier;
+      if (!rawIdentifier.includes("@")) {
+        const canonical = rawIdentifier.replace(/[\\s\\u200c\\u200d]+/g, "");
+        const bytes = new TextEncoder().encode(canonical);
+        const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+        loginEmail = `u-${hex}@members.danial-legal.app`;
+      }
+      const { error: signInError } = await createClient().auth.signInWithPassword({ email: loginEmail, password });
       if (signInError) throw new Error("ورود انجام نشد. ایمیل و گذرواژه را بررسی کنید.");
       router.replace("/dashboard");
       router.refresh();
@@ -46,8 +54,8 @@ export default function LoginPage() {
           <p className="text-sm text-[#9a7a45] font-bold">ورود امن</p>
           <h2 className="text-2xl font-bold mt-2">به فضای کاری دانیال خوش آمدید</h2>
           <p className="text-sm text-slate-500 mt-3 mb-8">برای ادامه، اطلاعات حساب کاربری خود را وارد کنید.</p>
-          <label className="block text-sm mb-2">ایمیل</label>
-          <input type="email" required autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} className="w-full border border-slate-200 rounded-xl p-3 mb-5 outline-none focus:border-[#9a7a45]" dir="ltr" />
+          <label className="block text-sm mb-2">نام کاربری یا ایمیل</label>
+          <input type="text" required autoComplete="username" value={identifier} onChange={(event) => setIdentifier(event.target.value)} className="w-full border border-slate-200 rounded-xl p-3 mb-5 outline-none focus:border-[#9a7a45]" dir="auto" />
           <label className="block text-sm mb-2">گذرواژه</label>
           <input type="password" required autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className="w-full border border-slate-200 rounded-xl p-3 mb-3 outline-none focus:border-[#9a7a45]" dir="ltr" />
           <div className="flex justify-end mb-5"><Link href="/reset-password" className="text-xs text-[#8a6e42] underline">گذرواژه را فراموش کرده‌ام</Link></div>
