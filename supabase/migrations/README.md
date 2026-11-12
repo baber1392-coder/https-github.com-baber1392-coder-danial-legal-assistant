@@ -16,7 +16,7 @@ This inventory records migrations confirmed in the live Supabase migration histo
 | 20261112104605 | add_private_ai_assistant_chat |
 | 20261112141329 | case_document_ai_access_sms_and_invites |
 | 20261112141543 | secure_office_invitation_code_functions |
-| 20261112141920 | fix_invitation_redeem_active_member_guard |
+| 20261112141920 | fix_invitation_redeem_active_member_guard |\n| 20261112150000 | create_case_client_relationships |
 
 ## Verified live state at inventory time
 
@@ -27,7 +27,7 @@ This inventory records migrations confirmed in the live Supabase migration histo
 - 0 invitation codes.
 - 0 SMS queue rows and 0 SMS provider settings rows.
 - One Storage bucket, `case-documents`, with private object policies.
-- RLS enabled on the inspected public tables.
+- RLS enabled on the inspected public tables.\n- A private `case_clients` relation table links multiple clients to each case, with represented / needs-review status and office-scoped RLS.\n- Confirmed client names and case links were seeded from the office register and existing case notes; uncertain representation relationships are explicitly marked for review.\n- Case lists show linked client names. Date display and date entry use the Jalali calendar; stored dates remain Gregorian ISO values for database interoperability.
 
 ## Operational cautions
 
