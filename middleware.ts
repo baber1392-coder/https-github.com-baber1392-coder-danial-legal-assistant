@@ -27,18 +27,49 @@ export async function middleware(request: NextRequest) {
   });
 
   const { data: { user }, error } = await supabase.auth.getUser();
+
+  // A revoked/expired refresh token can remain in the browser cookie jar.
+  // Clear only Supabase auth-token cookies for this specific invalid-token case,
+  // then require a fresh sign-in instead of repeatedly reusing a broken session.
+  const invalidRefreshToken = Boolean(
+    error && /invalid refresh token|refresh token not found/i.test(error.message ?? "")
+  );
+
+  if (invalidRefreshToken) {
+    const target = request.nextUrl.clone();
+    target.pathname = "/login";
+    target.searchParams.set("next", pathname);
+    const redirectResponse = NextResponse.redirect(target);
+    for (const cookie of request.cookies.getAll()) {
+      if (cookie.name.startsWith("sb-") && cookie.name.includes("-auth-token")) {
+        request.cookies.delete(cookie.name);
+        redirectResponse.cookies.set(cookie.name, "", {
+          path: "/",
+          maxAge: 0,
+          expires: new Date(0),
+          httpOnly: false,
+          sameSite: "lax",
+          secure: request.nextUrl.protocol === "https:",
+        });
+      }
+    }
+    return redirectResponse;
+  }
+
   if (isDashboard && (error || !user)) {
     const target = request.nextUrl.clone();
     target.pathname = "/login";
     target.searchParams.set("next", pathname);
     return NextResponse.redirect(target);
   }
+
   if (user && pathname === "/login") {
     const target = request.nextUrl.clone();
     target.pathname = "/dashboard";
     target.search = "";
     return NextResponse.redirect(target);
   }
+
   return response;
 }
 
