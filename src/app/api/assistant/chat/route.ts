@@ -282,7 +282,19 @@ export async function POST(request: NextRequest) {
     if (!apiResponse.ok) {
       const apiMessage = typeof result?.error?.message === "string" ? result.error.message : "خطای نامشخص در سرویس هوش مصنوعی";
       console.error("OpenAI API request failed", { status: apiResponse.status, message: apiMessage });
-      return NextResponse.json({ error: "پاسخ از سرویس هوش مصنوعی دریافت نشد. تنظیم کلید، مدل و اعتبار حساب API بررسی شود." }, { status: 502 });
+      if (apiResponse.status === 429 && /no credits remaining|insufficient_quota|credit_balance_exhausted/i.test(apiMessage)) {
+        return NextResponse.json(
+          { error: "اعتبار API حساب OpenAI تمام شده است. اشتراک رایگان ChatGPT شامل اعتبار API برای این وب‌سایت نیست؛ برای ادامه باید اعتبار API جداگانه تهیه شود یا یک ارائه‌دهنده دارای طرح رایگان پیکربندی شود." },
+          { status: 429 }
+        );
+      }
+      if (apiResponse.status === 429) {
+        return NextResponse.json(
+          { error: "محدودیت نرخ درخواست API اعمال شده است. کمی بعد دوباره تلاش کنید." },
+          { status: 429 }
+        );
+      }
+      return NextResponse.json({ error: "سرویس هوش مصنوعی درخواست را نپذیرفت. تنظیم کلید و دسترسی مدل بررسی شود." }, { status: 502 });
     }
 
     assistantText = (result.output ?? [])
