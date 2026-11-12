@@ -22,7 +22,7 @@ export default async function ModulePage({ params }: { params: Promise<{ module:
   const { supabase, user, office, role } = await requireOffice();
   const { data, error } = await supabase
     .from(config.table)
-    .select(module === "documents" ? "*, cases(title,case_number)" : "*")
+    .select("*")
     .eq("office_id", office.id)
     .order(config.order, { ascending: config.ascending ?? false })
     .limit(100);
@@ -37,6 +37,13 @@ export default async function ModulePage({ params }: { params: Promise<{ module:
     caseOptions = cases ?? [];
   }
 
+  let rows = (data ?? []) as Record<string, unknown>[];
+  if (module === "documents") {
+    const { data: caseRows } = await supabase.from("cases").select("id,title,case_number").eq("office_id", office.id);
+    const caseMap = new Map((caseRows ?? []).map((item) => [item.id, item]));
+    rows = rows.map((row) => ({ ...row, cases: caseMap.get(String(row.case_id)) ?? null }));
+  }
+
   return (
     <main className="main max-w-6xl mx-auto">
       <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-500 mb-6"><ArrowRight size={16} /> بازگشت به داشبورد</Link>
@@ -48,7 +55,7 @@ export default async function ModulePage({ params }: { params: Promise<{ module:
       <ModuleClient
         module={module}
         title={config.title}
-        rows={data ?? []}
+        rows={rows}
         officeId={office.id}
         userId={user.id}
         role={role}
