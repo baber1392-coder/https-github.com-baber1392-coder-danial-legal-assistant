@@ -123,8 +123,8 @@ const configs: Record<string, { table: string; fields: Field[]; columns: string[
   settings: {
     table: "office_memberships",
     fields: [],
-    columns: ["user_id", "role", "status", "created_at"],
-    labels: { user_id: "شناسه کاربر", role: "نقش", status: "وضعیت", created_at: "تاریخ عضویت" },
+    columns: ["display_name", "role", "status", "created_at"],
+    labels: { display_name: "نام عضو", role: "نقش", status: "وضعیت", created_at: "تاریخ عضویت" },
   },
 };
 
@@ -260,6 +260,8 @@ export default function ModuleClient({
   const [accessCaseId, setAccessCaseId] = useState("");
   const [accessCanUpdate, setAccessCanUpdate] = useState(false);
   const [accessCanUpload, setAccessCanUpload] = useState(false);
+  const [newLawyerName, setNewLawyerName] = useState("محمدجعفر کریمی‌زاده");
+  const [createdCredential, setCreatedCredential] = useState("");
 
   useEffect(() => { setLocalRows(rows); }, [rows]);
   useEffect(() => {
@@ -404,6 +406,30 @@ export default function ModuleClient({
     }
   }
 
+  async function createLawyerAccount() {
+    setBusy(true);
+    setMessage("");
+    setCreatedCredential("");
+    try {
+      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+      const random = new Uint32Array(28);
+      crypto.getRandomValues(random);
+      const password = Array.from(random, (value) => alphabet[value % alphabet.length]).join("");
+      const { data, error } = await supabase.functions.invoke("create-office-lawyer", {
+        body: { display_name: newLawyerName, office_id: officeId, password },
+      });
+      if (error) throw new Error("ایجاد حساب انجام نشد. وضعیت اتصال و مجوز مدیر دفتر بررسی شود.");
+      if (!data?.success) throw new Error(data?.error ?? "ایجاد حساب انجام نشد.");
+      setCreatedCredential(newLawyerName + " | " + password);
+      setMessage("حساب وکیل ایجاد شد. گذرواژه موقت فقط در همین صفحه نمایش داده می‌شود.");
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "ایجاد حساب انجام نشد.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function grantCaseAccess(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!accessMemberId || !accessCaseId) {
@@ -439,6 +465,23 @@ export default function ModuleClient({
     return (
       <div className="space-y-5">
         <section className="card">
+          <h2 className="font-bold mb-3">ایجاد حساب وکیل</h2>
+          <p className="text-sm text-slate-500 leading-7 mb-4">حساب مستقل با نام کاربری فارسی ایجاد می‌شود. گذرواژه موقت قوی به‌صورت خودکار ساخته و فقط یک‌بار نمایش داده می‌شود.</p>
+          <div className="grid md:grid-cols-[1fr_auto] gap-3 items-end">
+            <label className="field-label">نام کاربری
+              <select value={newLawyerName} onChange={(event) => setNewLawyerName(event.target.value)} className="field-input">
+                <option value="محمدجعفر کریمی‌زاده">محمدجعفر کریمی‌زاده</option>
+                <option value="حسین صمدی">حسین صمدی</option>
+              </select>
+            </label>
+            <button type="button" disabled={busy} onClick={createLawyerAccount} className="rounded-xl bg-[#10243a] text-white px-5 py-3 disabled:opacity-60">{busy ? "در حال ایجاد..." : "ایجاد حساب وکیل"}</button>
+          </div>
+          {createdCredential && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <p className="text-sm font-bold mb-2">اطلاعات ورود موقت، همین حالا یادداشت و به وکیل تحویل شود</p>
+            <textarea readOnly rows={2} value={createdCredential} className="w-full rounded-lg border p-2 text-sm" dir="auto" />
+          </div>}
+        </section>
+        <section className="card">
           <h2 className="font-bold mb-3">اعضای دفتر</h2>
           <p className="text-sm text-slate-500 leading-7 mb-4">فهرست اعضا و نقش‌های ثبت‌شده در دفتر.</p>
           <div className="overflow-x-auto">
@@ -455,7 +498,7 @@ export default function ModuleClient({
             <label className="field-label">وکیل
               <select required value={accessMemberId} onChange={(event) => setAccessMemberId(event.target.value)} className="field-input">
                 <option value="">انتخاب وکیل</option>
-                {lawyers.map((row) => <option key={String(row.user_id)} value={String(row.user_id)}>{String(row.user_id)}</option>)}
+                {lawyers.map((row) => <option key={String(row.user_id)} value={String(row.user_id)}>{String(row.display_name ?? row.user_id)}</option>)}
               </select>
             </label>
             <label className="field-label">پرونده
