@@ -43,6 +43,28 @@ export default async function ModulePage({ params }: { params: Promise<{ module:
     const caseMap = new Map((caseRows ?? []).map((item) => [item.id, item]));
     rows = rows.map((row) => ({ ...row, cases: caseMap.get(String(row.case_id)) ?? null }));
   }
+  if (module === "cases") {
+    const { data: links } = await supabase
+      .from("case_clients")
+      .select("case_id,client_id,role_in_case,representation_status")
+      .eq("office_id", office.id);
+    const clientIds = [...new Set((links ?? []).map((link) => link.client_id))];
+    const { data: clientRows } = clientIds.length
+      ? await supabase.from("clients").select("id,full_name").eq("office_id", office.id).in("id", clientIds)
+      : { data: [] as { id: string; full_name: string }[] };
+    const clientMap = new Map((clientRows ?? []).map((client) => [client.id, client.full_name]));
+    const namesByCase = new Map<string, string[]>();
+    for (const link of links ?? []) {
+      const name = clientMap.get(link.client_id);
+      if (!name) continue;
+      const label = link.representation_status === "needs_review" ? name + " (رابطه وکالت نیازمند احراز)" : name;
+      namesByCase.set(link.case_id, [...(namesByCase.get(link.case_id) ?? []), label]);
+    }
+    rows = rows.map((row) => ({
+      ...row,
+      client_names: namesByCase.get(String(row.id))?.join("، ") ?? "موکل ثبت نشده / نیازمند تکمیل",
+    }));
+  }
 
   return (
     <main className="main max-w-6xl mx-auto">
