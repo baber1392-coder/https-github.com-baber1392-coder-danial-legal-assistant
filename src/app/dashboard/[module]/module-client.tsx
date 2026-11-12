@@ -117,8 +117,8 @@ const configs: Record<string, { table: string; fields: Field[]; columns: string[
   documents: {
     table: "case_documents",
     fields: [],
-    columns: ["original_filename", "content_type", "size_bytes", "created_at"],
-    labels: { original_filename: "نام فایل", content_type: "نوع فایل", size_bytes: "حجم (بایت)", created_at: "تاریخ بارگذاری" },
+    columns: ["original_filename", "document_type", "cases", "content_type", "size_bytes", "created_at"],
+    labels: { original_filename: "نام فایل", document_type: "نوع سند", cases: "پرونده مرتبط", content_type: "نوع فایل", size_bytes: "حجم (بایت)", created_at: "تاریخ بارگذاری" },
   },
   settings: {
     table: "office_memberships",
@@ -183,7 +183,7 @@ function displayValue(value: unknown, key: string) {
 }
 
 export default function ModuleClient({
-  module, title, rows, officeId, userId, caseOptions,
+  module, title, rows, officeId, userId, role, caseOptions,
 }: {
   module: string;
   title: string;
@@ -203,7 +203,7 @@ export default function ModuleClient({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedCase, setSelectedCase] = useState("");
   const [notes, setNotes] = useState("");
-  const [fileInputKey, setFileInputKey] = useState(0);
+  const [fileInputKey, setFileInputKey] = useState(0);\n  const [documentType, setDocumentType] = useState("other");\n  const [inviteRole, setInviteRole] = useState("staff");\n  const [inviteCode, setInviteCode] = useState("");\n  const [redeemCode, setRedeemCode] = useState("");
 
   useEffect(() => { setLocalRows(rows); }, [rows]);
   useEffect(() => {
@@ -361,9 +361,14 @@ export default function ModuleClient({
               <input key={fileInputKey} type="file" required accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.txt" onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)} className="field-input" />
             </label>
             <label className="field-label">پرونده مرتبط
-              <select value={selectedCase} onChange={(event) => setSelectedCase(event.target.value)} className="field-input">
-                <option value="">عمومی / بدون اتصال به پرونده</option>
+              <select required value={selectedCase} onChange={(event) => setSelectedCase(event.target.value)} className="field-input">
+                <option value="">انتخاب پرونده الزامی است</option>
                 {caseOptions.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+              </select>
+            </label>
+            <label className="field-label">نوع سند
+              <select value={documentType} onChange={(event) => setDocumentType(event.target.value)} className="field-input">
+                <option value="other">سایر</option><option value="petition">دادخواست</option><option value="brief">لایحه</option><option value="judgment">دادنامه</option><option value="notice">ابلاغیه</option><option value="contract">قرارداد</option><option value="evidence">مدرک و دلیل</option><option value="expert_report">نظریه کارشناسی</option><option value="receipt">رسید</option><option value="correspondence">مکاتبه</option>
               </select>
             </label>
             <label className="field-label md:col-span-2">یادداشت
@@ -425,7 +430,7 @@ export default function ModuleClient({
               <tbody>
                 {localRows.map((row) => (
                   <tr key={String(row.id)} className="hover:bg-slate-50">
-                    {columns.map((key) => <td className="p-3 border-b border-slate-100 max-w-xs" key={key}>{key === "source_url" && row[key] ? <a href={String(row[key])} target="_blank" rel="noreferrer" className="text-blue-700 underline">مشاهده منبع</a> : displayValue(row[key], key)}</td>)}
+                    {columns.map((key) => <td className="p-3 border-b border-slate-100 max-w-xs" key={key}>{key === "source_url" && row[key] ? <a href={String(row[key])} target="_blank" rel="noreferrer" className="text-blue-700 underline">مشاهده منبع</a> : key === "cases" ? String((row.cases as { title?: string; case_number?: string } | null)?.title ?? "—") + (((row.cases as { case_number?: string } | null)?.case_number) ? " · " + (row.cases as { case_number?: string }).case_number : "") : displayValue(row[key], key)}</td>)}
                     <td className="p-3 border-b border-slate-100 whitespace-nowrap">
                       {module === "documents" ? (
                         <button onClick={() => downloadDocument(row)} disabled={busy} className="btn secondary"><Download size={15} />دریافت</button>
