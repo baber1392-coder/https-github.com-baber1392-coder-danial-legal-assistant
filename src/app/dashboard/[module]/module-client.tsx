@@ -297,9 +297,16 @@ export default function ModuleClient({
         .upload(path, selectedFile, { upsert: false, contentType: selectedFile.type || "application/octet-stream" });
       if (uploadError) throw new Error(uploadError.message);
 
+      const extractedText = selectedFile.type === "text/plain" || selectedFile.name.toLowerCase().endsWith(".txt")
+        ? (await selectedFile.text()).slice(0, 200000)
+        : null;
       const { error: metadataError } = await supabase.from("case_documents").insert({
         office_id: officeId,
         case_id: selectedCase,
+        document_type: documentType,
+        extracted_text: extractedText,
+        extraction_status: extractedText ? "completed" : "pending",
+        extracted_at: extractedText ? new Date().toISOString() : null,
         original_filename: selectedFile.name.slice(0, 255),
         content_type: selectedFile.type || "application/octet-stream",
         size_bytes: selectedFile.size,
