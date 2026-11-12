@@ -2,11 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   Scale, FolderOpen, Users, CalendarClock, FileText, BookOpen, Wallet,
-  Settings, ShieldCheck, ArrowUpLeft
+  Settings, ShieldCheck, ArrowUpLeft, MessageCircle
 } from "lucide-react";
 import { getUserOffice } from "@/lib/supabase/office";
 
 const navigation = [
+  { label: "دستیار هوشمند", href: "/dashboard/assistant", icon: MessageCircle },
   { label: "پرونده‌ها", href: "/dashboard/cases", icon: FolderOpen },
   { label: "موکلان", href: "/dashboard/clients", icon: Users },
   { label: "اسناد و مدارک", href: "/dashboard/documents", icon: FileText },
