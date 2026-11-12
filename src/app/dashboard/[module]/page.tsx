@@ -19,10 +19,10 @@ export default async function ModulePage({ params }: { params: Promise<{ module:
   const config = modules[module];
   if (!config) notFound();
 
-  const { supabase, user, office } = await requireOffice();
+  const { supabase, user, office, role } = await requireOffice();
   const { data, error } = await supabase
     .from(config.table)
-    .select("*")
+    .select(module === "documents" ? "*, cases(title,case_number)" : "*")
     .eq("office_id", office.id)
     .order(config.order, { ascending: config.ascending ?? false })
     .limit(100);
@@ -51,6 +51,7 @@ export default async function ModulePage({ params }: { params: Promise<{ module:
         rows={data ?? []}
         officeId={office.id}
         userId={user.id}
+        role={role}
         caseOptions={caseOptions}
       />
     </main>
