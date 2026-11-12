@@ -248,6 +248,45 @@ export async function POST(request: NextRequest) {
         یادداشت‌ها: (selectedCase.notes ?? "").slice(0, 6500),
       }),
     ].join("\n");
+
+    const { data: caseDocuments } = await context.supabase
+      .from("case_documents")
+      .select("id,original_filename,document_type,document_date,notes,extracted_text,extraction_status")
+      .eq("office_id", context.officeId)
+      .eq("case_id", caseId)
+      .order("created_at", { ascending: false })
+      .limit(25);
+
+    const documentIds = (caseDocuments ?? []).map((document) => document.id);
+    let extractedChunks: Array<{ document_id: string; chunk_index: number; content: string }> = [];
+    if (documentIds.length) {
+      const { data: chunks } = await context.supabase
+        .from("case_document_chunks")
+        .select("document_id,chunk_index,content")
+        .eq("office_id", context.officeId)
+        .eq("case_id", caseId)
+        .in("document_id", documentIds)
+        .order("document_id", { ascending: true })
+        .order("chunk_index", { ascending: true })
+        .limit(80);
+      extractedChunks = chunks ?? [];
+    }
+
+    const documentContext = (caseDocuments ?? []).map((document) => {
+      const text = (document.extracted_text ?? "").slice(0, 6000);
+      return [
+        "سند: " + document.original_filename,
+        "نوع: " + document.document_type,
+        "تاریخ سند: " + (document.document_date ?? "ثبت نشده"),
+        "وضعیت استخراج متن: " + document.extraction_status,
+        "یادداشت: " + (document.notes ?? ""),
+        text ? "متن استخراج‌شده:\\n" + text : "متن کامل سند هنوز استخراج نشده است."
+      ].join("\\n");
+    });
+    const chunkContext = extractedChunks.map((chunk) => "بخش سند " + chunk.document_id + " / " + chunk.chunk_index + ":\\n" + chunk.content);
+    const combinedDocumentContext = [...documentContext, ...chunkContext].join("\\n\\n").slice(0, 24000);
+    caseContext += "\\n\\nاسناد متصل به همین پرونده (" + (caseDocuments ?? []).length + " فایل ثبت‌شده):\\n" +
+      (combinedDocumentContext || "هنوز سند متنیِ قابل جست‌وجو به این پرونده متصل نشده است.");
   }
 
   const input = (history ?? []).reverse().map((item) => ({
