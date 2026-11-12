@@ -157,7 +157,7 @@ function displayValue(value: unknown, key: string) {
   }
   if (key === "published_at" || key === "filed_at") {
     const date = new Date(String(value) + "T12:00:00Z");
-    return new Intl.DateTimeFormat("fa-IR", { dateStyle: "medium", timeZone: "Asia/Tehran" }).format(date);
+    return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "medium", timeZone: "Asia/Tehran" }).format(date);
   }
   const translations: Record<string, string> = {
     active: "فعال", pending: "در انتظار", closed: "مختومه", suspended: "متوقف",
@@ -295,7 +295,7 @@ export default function ModuleClient({
 
       const { error: metadataError } = await supabase.from("case_documents").insert({
         office_id: officeId,
-        case_id: selectedCase || null,
+        case_id: selectedCase,
         original_filename: selectedFile.name.slice(0, 255),
         content_type: selectedFile.type || "application/octet-stream",
         size_bytes: selectedFile.size,
@@ -312,7 +312,7 @@ export default function ModuleClient({
       setSelectedCase("");
       setNotes("");
       setFileInputKey((value) => value + 1);
-      setMessage("سند با موفقیت در مخزن خصوصی دفتر ذخیره شد.");
+      setMessage("سند با موفقیت به پرونده انتخاب‌شده متصل و در مخزن خصوصی دفتر ذخیره شد.");
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "بارگذاری سند انجام نشد.");
