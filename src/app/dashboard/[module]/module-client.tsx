@@ -230,7 +230,7 @@ function displayValue(value: unknown, key: string) {
 }
 
 export default function ModuleClient({
-  module, title, rows, officeId, userId, role, caseOptions,
+  module, title, rows, officeId, userId, role, caseOptions, caseAssignments,
 }: {
   module: string;
   title: string;
@@ -239,6 +239,10 @@ export default function ModuleClient({
   userId: string;
   role: string;
   caseOptions: CaseOption[];
+  caseAssignments: {
+    id: string; user_id: string; case_id: string;
+    can_read: boolean; can_update: boolean; can_upload: boolean;
+  }[];
 }) {
   const config = configs[module];
   const router = useRouter();
@@ -512,6 +516,39 @@ export default function ModuleClient({
             <div className="md:col-span-2"><button disabled={busy} className="rounded-xl bg-[#10243a] text-white px-5 py-3 disabled:opacity-60">{busy ? "در حال ثبت..." : "ثبت دسترسی"}</button></div>
           </form>
           {message && <p role="status" className="text-sm mt-3 text-slate-600">{message}</p>}
+        </section>
+        <section className="card">
+          <h2 className="font-bold mb-3">دسترسی‌های ثبت‌شده</h2>
+          {caseAssignments.length === 0 ? (
+            <p className="text-sm text-slate-500 py-4">هنوز دسترسی پرونده‌ای ثبت نشده است.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr>
+                  <th className="text-right p-3 border-b">وکیل</th>
+                  <th className="text-right p-3 border-b">پرونده</th>
+                  <th className="text-right p-3 border-b">مشاهده</th>
+                  <th className="text-right p-3 border-b">ویرایش</th>
+                  <th className="text-right p-3 border-b">بارگذاری سند</th>
+                </tr></thead>
+                <tbody>
+                  {caseAssignments.map((assignment) => {
+                    const member = localRows.find((row) => String(row.user_id) === assignment.user_id);
+                    const caseItem = caseOptions.find((item) => item.id === assignment.case_id);
+                    return (
+                      <tr key={assignment.id}>
+                        <td className="p-3 border-b">{String(member?.display_name ?? "عضو نامشخص")}</td>
+                        <td className="p-3 border-b">{caseItem?.title ?? "پرونده نامشخص"}</td>
+                        <td className="p-3 border-b">{assignment.can_read ? "مجاز" : "غیرمجاز"}</td>
+                        <td className="p-3 border-b">{assignment.can_update ? "مجاز" : "غیرمجاز"}</td>
+                        <td className="p-3 border-b">{assignment.can_upload ? "مجاز" : "غیرمجاز"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       </div>
     );
