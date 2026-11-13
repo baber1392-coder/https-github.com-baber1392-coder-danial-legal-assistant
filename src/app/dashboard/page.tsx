@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   Scale, FolderOpen, Users, CalendarClock, FileText, BookOpen, Wallet,
-  Settings, ShieldCheck, ArrowUpLeft, MessageCircle, Activity
+  Settings, ShieldCheck, ArrowUpLeft, MessageCircle, Activity, ExternalLink
 } from "lucide-react";
 import { getUserOffice } from "@/lib/supabase/office";
 
@@ -106,6 +106,28 @@ export default async function DashboardPage() {
               <ArrowUpLeft size={15} className="mr-auto text-slate-400" />
             </Link>
           ))}
+        </section>
+
+        <section className="card mt-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="feature-icon"><ExternalLink size={19} /></div>
+            <div><h2 className="font-bold text-sm">سامانه‌های مهم قضایی و حقوقی</h2><p className="text-xs text-slate-500 mt-1">دسترسی سریع به درگاه‌های رسمی و منابع حقوقی</p></div>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {[
+              { label: "درگاه خدمات الکترونیک عدل ایران", detail: "ورود به خدمات قضایی و ابلاغ", href: "https://my.adliran.ir/RealPerson/Index" },
+              { label: "سامانه احراز هویت ثنا", detail: "ثبت‌نام و احراز هویت قضایی", href: "https://sana.adliran.ir/Sana/Index" },
+              { label: "درگاه ملی قوه قضاییه", detail: "فهرست خدمات رسمی قضایی", href: "https://www.eadil.com/" },
+              { label: "سامانه ملی آرای قضایی", detail: "جست‌وجوی آرای مشابه و قضایی", href: "https://ara.jri.ac.ir/" },
+              { label: "آرای وحدت رویه و نظریات مشورتی", detail: "منابع حقوقی منتشرشده قوه قضاییه", href: "https://eadl.ir/" },
+              { label: "پایگاه قوانین و مقررات", detail: "متون قوانین و مقررات", href: "https://dastour.ir/" },
+            ].map((item) => (
+              <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-slate-200 p-3 hover:border-amber-400 hover:bg-amber-50/40 transition flex items-start justify-between gap-3">
+                <span><span className="block text-sm font-semibold text-slate-800">{item.label}</span><span className="block text-xs text-slate-500 mt-1">{item.detail}</span></span>
+                <ExternalLink size={15} className="shrink-0 text-slate-400" />
+              </a>
+            ))}
+          </div>
         </section>
 
         <section className="card mt-6">
