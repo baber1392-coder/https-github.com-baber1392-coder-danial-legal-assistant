@@ -283,7 +283,7 @@ export async function POST(request: NextRequest) {
         "وضعیت استخراج متن: " + document.extraction_status,
         "یادداشت: " + (document.notes ?? ""),
         text ? "متن استخراج‌شده:\\n" + text : "متن کامل سند هنوز استخراج نشده است."
-      ].join("\\n");
+      ].join("\n");
     });
     const chunkContext = extractedChunks.map((chunk) => "بخش سند " + chunk.document_id + " / " + chunk.chunk_index + ":\\n" + chunk.content);
     const combinedDocumentContext = [...documentContext, ...chunkContext].join("\\n\\n").slice(0, 24000);
@@ -320,7 +320,7 @@ export async function POST(request: NextRequest) {
 
     const archiveBlocks = [...archiveRows.values()].slice(0, 4).map((item) => {
       const userMessages = (item.content ?? "")
-        .split(/(?=\\[USER \\|)/g)
+        .split(/(?=\[USER \|)/g)
         .filter((part) => part.startsWith("[USER |"))
         .slice(-4)
         .map((part) => part.slice(0, 1400));
@@ -333,12 +333,12 @@ export async function POST(request: NextRequest) {
         "شماره‌های بایگانی ذکرشده: " + (item.archive_number_matches ?? []).join("، "),
         "تعداد پیام‌ها: " + (item.message_count ?? 0),
         "اظهارات کاربر در گفتگوی قبلی (خروجی دستیار در این بخش مبنای اثبات نیست):",
-        userMessages.join("\\n\\n") || "پیام کاربر قابل استخراج نبود.",
+        userMessages.join("\n\n") || "پیام کاربر قابل استخراج نبود.",
       ].join("\\n");
     });
-    archiveContext = archiveBlocks.join("\\n\\n").slice(0, 14000);
+    archiveContext = archiveBlocks.join("\n\n").slice(0, 14000);
     if (archiveContext) {
-      caseContext += "\\n\\nسوابق آرشیو پروژه‌های ChatGPT مرتبط با پرونده انتخاب‌شده (صرفاً سابقه گفتگو؛ نه سند رسمی):\\n" + archiveContext;
+      caseContext += "\n\nسوابق آرشیو پروژه‌های ChatGPT مرتبط با پرونده انتخاب‌شده (صرفاً سابقه گفتگو؛ نه سند رسمی):\\n" + archiveContext;
     }
   }
 
