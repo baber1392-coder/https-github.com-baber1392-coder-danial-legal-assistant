@@ -123,10 +123,10 @@ export async function POST(request: NextRequest) {
   const context = await getOfficeContext();
   if (isResponse(context)) return context;
 
-  const provider = process.env.GROQ_API_KEY ? "groq" : process.env.GEMINI_API_KEY ? "gemini" : process.env.OPENAI_API_KEY ? "openai" : null;
+  const provider = process.env.SAMBANOVA_API_KEY ? "sambanova" : process.env.GROQ_API_KEY ? "groq" : process.env.GEMINI_API_KEY ? "gemini" : process.env.OPENAI_API_KEY ? "openai" : null;
   if (!provider) {
     return NextResponse.json(
-      { error: "مدل هوش مصنوعی پیکربندی نشده است. مدیر سامانه باید کلید GROQ_API_KEY را در Environment سرویس Render ثبت کند." },
+      { error: "مدل هوش مصنوعی پیکربندی نشده است. مدیر سامانه باید یکی از کلیدهای SAMBANOVA_API_KEY، GROQ_API_KEY، GEMINI_API_KEY یا OPENAI_API_KEY را در Environment سرویس Render ثبت کند." },
       { status: 503 }
     );
   }
@@ -294,16 +294,51 @@ export async function POST(request: NextRequest) {
     content: item.content,
   }));
 
-  const model = provider === "groq"
-    ? (process.env.GROQ_MODEL || "openai/gpt-oss-120b")
-    : provider === "gemini"
+  const model = provider === "sambanova"
+    ? (process.env.SAMBANOVA_MODEL || "Meta-Llama-3.3-70B-Instruct")
+    : provider === "groq"
+      ? (process.env.GROQ_MODEL || "openai/gpt-oss-120b")
+      : provider === "gemini"
       ? (process.env.GEMINI_MODEL || "gemini-2.5-flash")
       : (process.env.OPENAI_MODEL || "gpt-6-astra");
   const useWebSearch = body.useWebSearch === true;
   let assistantText = "";
 
   try {
-    if (provider === "groq") {
+    if (provider === "sambanova") {
+      const messages = [
+        { role: "system", content: SYSTEM_INSTRUCTIONS + (caseContext ? "\\n\\n" + caseContext : "") },
+        ...input,
+      ];
+      const apiResponse = await fetch("https://api.sambanova.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.SAMBANOVA_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ model, messages, temperature: 0.2, max_tokens: 3000, stream: false }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(90000),
+      });
+      const result = await apiResponse.json();
+      if (!apiResponse.ok) {
+        const apiMessage = typeof result?.error?.message === "string" ? result.error.message : "SambaNova API error";
+        console.error("SambaNova API request failed", { status: apiResponse.status, message: apiMessage });
+        if (apiResponse.status === 429) {
+          return NextResponse.json({ error: "محدودیت نرخ یا سهمیه SambaNova اعمال شده است. کمی بعد دوباره تلاش کنید." }, { status: 429 });
+        }
+        if (apiResponse.status === 401 || apiResponse.status === 403) {
+          return NextResponse.json({ error: "کلید یا دسترسی SambaNova معتبر نیست. تنظیمات کلید در Render بررسی شود." }, { status: 502 });
+        }
+        if (apiResponse.status === 402) {
+          return NextResponse.json({ error: "حساب SambaNova برای این درخواست اعتبار یا روش پرداخت فعال ندارد." }, { status: 502 });
+        }
+        return NextResponse.json({ error: "سرویس SambaNova درخواست را نپذیرفت." }, { status: 502 });
+      }
+      assistantText = typeof result.choices?.[0]?.message?.content === "string"
+        ? result.choices[0].message.content.trim()
+        : "";
+    } else if (provider === "groq") {
       const messages = [
         { role: "system", content: SYSTEM_INSTRUCTIONS + (caseContext ? "\\n\\n" + caseContext : "") },
         ...input,
