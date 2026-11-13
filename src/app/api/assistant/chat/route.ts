@@ -320,7 +320,7 @@ export async function POST(request: NextRequest) {
 
     const archiveBlocks = [...archiveRows.values()].slice(0, 4).map((item) => {
       const userMessages = (item.content ?? "")
-        .split(/(?=\[USER \|)/g)
+        .split(/(?=\[(?:USER|ASSISTANT) \|)/g)
         .filter((part) => part.startsWith("[USER |"))
         .slice(-4)
         .map((part) => part.slice(0, 1400));
