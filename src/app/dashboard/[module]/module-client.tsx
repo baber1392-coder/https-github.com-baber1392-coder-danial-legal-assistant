@@ -658,26 +658,47 @@ export default function ModuleClient({
             <table className="w-full text-sm">
               <thead><tr>{columns.map((key) => <th className="text-right p-3 border-b whitespace-nowrap" key={key}>{config.labels[key] ?? key}</th>)}<th className="p-3 border-b">عملیات</th></tr></thead>
               <tbody>
-                {localRows.map((row) => (
+                {module === "cases" ? (() => {
+                  const groups = new Map<string, Row[]>();
+                  [...localRows].sort((a, b) => String(a.client_names ?? "").localeCompare(String(b.client_names ?? ""), "fa")).forEach((row) => {
+                    const key = String(row.client_names ?? "موکل ثبت نشده / نیازمند تکمیل");
+                    groups.set(key, [...(groups.get(key) ?? []), row]);
+                  });
+                  return Array.from(groups.entries()).map(([clientName, group]) => (
+                    <Fragment key={clientName}>
+                      <tr className="bg-slate-100 border-y-2 border-slate-300">
+                        <td colSpan={columns.length + 1} className="px-4 py-3 font-bold text-slate-800">
+                          <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" />{clientName}</span>
+                          <span className="mr-3 rounded-full bg-white border px-2.5 py-1 text-xs font-medium text-slate-600">{group.length} پرونده</span>
+                        </td>
+                      </tr>
+                      {group.map((row) => (
+                        <tr key={String(row.id)} className="hover:bg-slate-50">
+                          {columns.map((key) => <td className="p-3 border-b border-slate-100 max-w-xs" key={key}>{displayValue(row[key], key)}</td>)}
+                          <td className="p-3 border-b border-slate-100 whitespace-nowrap">
+                            <div className="inline-flex items-center gap-2">
+                              <button onClick={() => setEditingRow(row)} className="btn secondary"><Pencil size={15} />ویرایش</button>
+                              {(role === "owner" || role === "admin") && <button type="button" onClick={() => deleteRecord(row)} disabled={busy} className="btn secondary text-red-700 border-red-200 hover:bg-red-50 disabled:opacity-50"><Trash2 size={15} />حذف</button>}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ));
+                })() : localRows.map((row) => (
                   <tr key={String(row.id)} className="hover:bg-slate-50">
                     {columns.map((key) => <td className="p-3 border-b border-slate-100 max-w-xs" key={key}>{key === "source_url" && row[key] ? <a href={String(row[key])} target="_blank" rel="noreferrer" className="text-blue-700 underline">مشاهده منبع</a> : key === "cases" ? String((row.cases as { title?: string; case_number?: string } | null)?.title ?? "—") + (((row.cases as { case_number?: string } | null)?.case_number) ? " · " + (row.cases as { case_number?: string }).case_number : "") : displayValue(row[key], key)}</td>)}
                     <td className="p-3 border-b border-slate-100 whitespace-nowrap">
-                      {module === "documents" ? (
-                        <button onClick={() => downloadDocument(row)} disabled={busy} className="btn secondary"><Download size={15} />دریافت</button>
-                      ) : (
+                      {module === "documents" ? <button onClick={() => downloadDocument(row)} disabled={busy} className="btn secondary"><Download size={15} />دریافت</button> : (
                         <div className="inline-flex items-center gap-2">
                           <button onClick={() => setEditingRow(row)} className="btn secondary"><Pencil size={15} />ویرایش</button>
-                          {(module === "cases" || module === "clients") && (role === "owner" || role === "admin") && (
-                            <button type="button" onClick={() => deleteRecord(row)} disabled={busy} className="btn secondary text-red-700 border-red-200 hover:bg-red-50 disabled:opacity-50" aria-label="حذف رکورد">
-                              <Trash2 size={15} />حذف
-                            </button>
-                          )}
+                          {module === "clients" && (role === "owner" || role === "admin") && <button type="button" onClick={() => deleteRecord(row)} disabled={busy} className="btn secondary text-red-700 border-red-200 hover:bg-red-50 disabled:opacity-50"><Trash2 size={15} />حذف</button>}
                         </div>
                       )}
                     </td>
                   </tr>
                 ))}
-              </tbody>
+</tbody>
             </table>
           </div>
         )}
