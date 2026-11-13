@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
   const context = await getOfficeContext();
   if (isResponse(context)) return context;
 
-  const provider = process.env.SAMBANOVA_API_KEY ? "sambanova" : process.env.GROQ_API_KEY ? "groq" : process.env.GEMINI_API_KEY ? "gemini" : process.env.OPENAI_API_KEY ? "openai" : null;
+  const provider = process.env.GROQ_API_KEY ? "groq" : process.env.GEMINI_API_KEY ? "gemini" : process.env.OPENAI_API_KEY ? "openai" : process.env.SAMBANOVA_API_KEY ? "sambanova" : null;
   if (!provider) {
     return NextResponse.json(
       { error: "مدل هوش مصنوعی پیکربندی نشده است. مدیر سامانه باید یکی از کلیدهای SAMBANOVA_API_KEY، GROQ_API_KEY، GEMINI_API_KEY یا OPENAI_API_KEY را در Environment سرویس Render ثبت کند." },
