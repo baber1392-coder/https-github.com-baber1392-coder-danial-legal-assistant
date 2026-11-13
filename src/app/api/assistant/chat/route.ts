@@ -14,6 +14,7 @@ const SYSTEM_INSTRUCTIONS = `
 - اگر اطلاعات یا منبع کافی نیست، روشن بگو و حدس نزن.
 - در تحلیل حقوقی: موضوع‌شناسی، تنقیح محل نزاع، ادله موافق، ادله مخالف، نقد و نتیجه را رعایت کن.
 - اطلاعات پرونده انتخاب‌شده فقط زمینه پاسخ است؛ هرگز از آن برای استنتاج قطعی فراتر از داده موجود استفاده نکن.
+- آرشیو گفتگوهای واردشده را فقط برای بازیابی سابقه و اظهارات قبلی کاربر به‌کار ببر؛ پیام‌های USER اظهارات گزارش‌شده کاربرند و پیام‌های ASSISTANT خروجی قبلی مدل‌اند، نه سند یا واقعیت مستقل. ارتباط نامزد با چند پرونده را قطعی ندان و پرونده‌های مستقل را ادغام نکن.
 - رمز، OTP، توکن، کوکی نشست و کلیدهای محرمانه را درخواست نکن.
 - برای لایحه و متن قضایی، ترجیحات دفتر را رعایت کن: آغاز «خدا هست»، شماره‌گذاری «توجه ۱، توجه ۲، ...» و پایان «مزید تشکر است».
 `;
@@ -220,6 +221,7 @@ export async function POST(request: NextRequest) {
   }
 
   let caseContext = "";
+  let archiveContext = "";
   const caseId = typeof body.caseId === "string" ? body.caseId : null;
   if (caseId) {
     const { data: selectedCase, error: caseError } = await context.supabase
@@ -287,6 +289,57 @@ export async function POST(request: NextRequest) {
     const combinedDocumentContext = [...documentContext, ...chunkContext].join("\\n\\n").slice(0, 24000);
     caseContext += "\\n\\nاسناد متصل به همین پرونده (" + (caseDocuments ?? []).length + " فایل ثبت‌شده):\\n" +
       (combinedDocumentContext || "هنوز سند متنیِ قابل جست‌وجو به این پرونده متصل نشده است.");
+
+    const [exactArchiveResult, candidateArchiveResult] = await Promise.all([
+      context.supabase
+        .from("project_archive_conversations")
+        .select("id,title,content,case_id,case_number_matches,archive_number_matches,source_updated_at,message_count")
+        .eq("office_id", context.officeId)
+        .eq("case_id", caseId)
+        .eq("content_available", true)
+        .order("source_updated_at", { ascending: false })
+        .limit(5),
+      context.supabase
+        .from("project_archive_conversations")
+        .select("id,title,content,case_id,case_candidate_ids,case_number_matches,archive_number_matches,source_updated_at,message_count")
+        .eq("office_id", context.officeId)
+        .contains("case_candidate_ids", [caseId])
+        .eq("content_available", true)
+        .order("source_updated_at", { ascending: false })
+        .limit(5),
+    ]);
+
+    const archiveRows = new Map<string, {
+      id: string; title: string; content: string | null; case_id: string | null;
+      case_number_matches?: string[] | null; archive_number_matches?: string[] | null;
+      source_updated_at?: string | null; message_count?: number | null;
+    }>();
+    for (const item of [...(exactArchiveResult.data ?? []), ...(candidateArchiveResult.data ?? [])]) {
+      archiveRows.set(item.id, item);
+    }
+
+    const archiveBlocks = [...archiveRows.values()].slice(0, 4).map((item) => {
+      const userMessages = (item.content ?? "")
+        .split(/(?=\\[USER \\|)/g)
+        .filter((part) => part.startsWith("[USER |"))
+        .slice(-4)
+        .map((part) => part.slice(0, 1400));
+      const relation = item.case_id === caseId ? "اتصال مستقیم بر اساس شماره پرونده" : "ارتباط نامزد؛ متن باید از حیث پرونده مقصد بازبینی شود";
+      return [
+        "گفتگوی آرشیوی: " + item.title,
+        "نوع ارتباط: " + relation,
+        "تاریخ به‌روزرسانی منبع: " + (item.source_updated_at ?? "ثبت نشده"),
+        "شماره‌های پرونده ذکرشده: " + (item.case_number_matches ?? []).join("، "),
+        "شماره‌های بایگانی ذکرشده: " + (item.archive_number_matches ?? []).join("، "),
+        "تعداد پیام‌ها: " + (item.message_count ?? 0),
+        "اظهارات کاربر در گفتگوی قبلی (خروجی دستیار در این بخش مبنای اثبات نیست):",
+        userMessages.join("\\n\\n") || "پیام کاربر قابل استخراج نبود.",
+      ].join("\\n");
+    });
+    archiveContext = archiveBlocks.join("\\n\\n").slice(0, 14000);
+    if (archiveContext) {
+      caseContext += "\\n\\nسوابق آرشیو پروژه‌های ChatGPT مرتبط با پرونده انتخاب‌شده (صرفاً سابقه گفتگو؛ نه سند رسمی):\\n" + archiveContext;
+    }
   }
 
   const input = (history ?? []).reverse().map((item) => ({
@@ -504,5 +557,6 @@ export async function POST(request: NextRequest) {
     webSearchUsed: useWebSearch && provider === "openai",
     webSearchUnavailable: useWebSearch && provider !== "openai",
     caseContextUsed: Boolean(caseContext),
+    archiveContextUsed: Boolean(archiveContext),
   });
 }
