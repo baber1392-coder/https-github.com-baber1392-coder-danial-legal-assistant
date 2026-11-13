@@ -12,6 +12,7 @@ const modules: Record<string, { title: string; description: string; table: strin
   research: { title: "پژوهش حقوقی", description: "ثبت قوانین، آرای وحدت رویه، نظریات مشورتی و آرای مشابه همراه با منبع.", table: "legal_research", order: "created_at" },
   finance: { title: "امور مالی", description: "ثبت دریافت‌ها، هزینه‌ها و سایر گردش‌های مالی دفتر به ریال یا تومان.", table: "financial_records", order: "occurred_at" },
   settings: { title: "اعضا و تنظیمات", description: "مشاهده اعضای فعال و نقش‌های ثبت‌شده در دفتر.", table: "office_memberships", order: "created_at" },
+  "project-archive": { title: "آرشیو گفتگوهای پروژه", description: "جست‌وجو و بازبینی گفتگوهای پالایش‌شده ChatGPT با نگهداری منشأ، نقش پیام‌ها و ارتباط نامزد با پرونده‌ها.", table: "project_archive_conversations", order: "source_updated_at" },
 };
 
 export default async function ModulePage({ params }: { params: Promise<{ module: string }> }) {
@@ -20,12 +21,13 @@ export default async function ModulePage({ params }: { params: Promise<{ module:
   if (!config) notFound();
 
   const { supabase, user, office, role } = await requireOffice();
+  const archiveColumns = "id,title,category,source_created_at,source_updated_at,message_count,case_number_matches,archive_number_matches,review_status,content_available,case_id,case_candidate_ids,import_status";
   const { data, error } = await supabase
     .from(config.table)
-    .select("*")
+    .select(module === "project-archive" ? archiveColumns : "*")
     .eq("office_id", office.id)
     .order(config.order, { ascending: config.ascending ?? false })
-    .limit(100);
+    .limit(module === "project-archive" ? 250 : 100);
 
   if (error) {
     throw new Error("دریافت اطلاعات این بخش انجام نشد. دسترسی دفتر و وضعیت پایگاه داده را بررسی کنید.");
