@@ -420,11 +420,11 @@ export default function ModuleClient({
       crypto.getRandomValues(random);
       const password = Array.from(random, (value) => alphabet[value % alphabet.length]).join("");
       const { data, error } = await supabase.functions.invoke("create-office-lawyer", {
-        body: { display_name: newLawyerName, office_id: officeId, password },
+        body: { display_name: newLawyerName, username: newLawyerName === "محمدجعفر کریمی‌زاده" ? "mkarimizadeh" : "hsafari", office_id: officeId, password },
       });
       if (error) throw new Error("ایجاد حساب انجام نشد. وضعیت اتصال و مجوز مدیر دفتر بررسی شود.");
       if (!data?.success) throw new Error(data?.error ?? "ایجاد حساب انجام نشد.");
-      setCreatedCredential(newLawyerName + " | " + password);
+      setCreatedCredential((newLawyerName === "محمدجعفر کریمی‌زاده" ? "mkarimizadeh" : "hsafari") + " | " + password);
       setMessage("حساب وکیل ایجاد شد. گذرواژه موقت فقط در همین صفحه نمایش داده می‌شود.");
       router.refresh();
     } catch (error) {
@@ -472,7 +472,7 @@ export default function ModuleClient({
           <h2 className="font-bold mb-3">ایجاد حساب وکیل</h2>
           <p className="text-sm text-slate-500 leading-7 mb-4">حساب مستقل با نام کاربری فارسی ایجاد می‌شود. گذرواژه موقت قوی به‌صورت خودکار ساخته و فقط یک‌بار نمایش داده می‌شود.</p>
           <div className="grid md:grid-cols-[1fr_auto] gap-3 items-end">
-            <label className="field-label">نام کاربری
+            <label className="field-label">نام و نام خانوادگی عضو
               <select value={newLawyerName} onChange={(event) => setNewLawyerName(event.target.value)} className="field-input">
                 <option value="محمدجعفر کریمی‌زاده">محمدجعفر کریمی‌زاده</option>
                 <option value="حسین صفری">حسین صفری</option>
