@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, FileUp, Pencil, Plus, Save, ShieldCheck, X } from "lucide-react";
+import { Download, FileUp, Pencil, Plus, Save, ShieldCheck, Trash2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Row = Record<string, unknown>;
@@ -335,6 +335,62 @@ export default function ModuleClient({
     }
   }
 
+  async function deleteRecord(row: Row) {
+    if (role !== "owner" && role !== "admin") {
+      setMessage("حذف پرونده و موکل فقط برای مالک دفتر یا مدیر مجاز است.");
+      return;
+    }
+    const recordId = String(row.id ?? "");
+    if (!recordId) return;
+    const recordLabel = String(row.title ?? row.full_name ?? "این رکورد");
+    if (!window.confirm("آیا از حذف «" + recordLabel + "» اطمینان دارید؟ این عملیات قابل بازگشت نیست.")) return;
+
+    setBusy(true);
+    setMessage("");
+    try {
+      if (module === "cases") {
+        const { data: linkedFinance, error: financeError } = await supabase
+          .from("financial_records").select("id").eq("office_id", officeId).eq("case_id", recordId).limit(1);
+        if (financeError) throw new Error(financeError.message);
+        if (linkedFinance?.length) throw new Error("برای این پرونده گردش مالی ثبت شده است. ابتدا ارتباط گردش‌های مالی را تعیین تکلیف کنید؛ پرونده حذف نشد.");
+
+        const { data: docs, error: docsError } = await supabase
+          .from("case_documents").select("storage_path").eq("office_id", officeId).eq("case_id", recordId);
+        if (docsError) throw new Error(docsError.message);
+        const paths = (docs ?? []).map((doc) => doc.storage_path).filter((path): path is string => typeof path === "string" && path.length > 0);
+        if (paths.length) {
+          const { error: storageError } = await supabase.storage.from("case-documents").remove(paths);
+          if (storageError) throw new Error("حذف فایل‌های پرونده از مخزن امن انجام نشد؛ پرونده حذف نشد: " + storageError.message);
+        }
+      }
+
+      if (module === "clients") {
+        const [financeResult, partyResult] = await Promise.all([
+          supabase.from("financial_records").select("id").eq("office_id", officeId).eq("client_id", recordId).limit(1),
+          supabase.from("case_parties").select("id").eq("office_id", officeId).eq("client_id", recordId).limit(1),
+        ]);
+        if (financeResult.error) throw new Error(financeResult.error.message);
+        if (partyResult.error) throw new Error(partyResult.error.message);
+        if (financeResult.data?.length || partyResult.data?.length) {
+          throw new Error("این موکل در گردش مالی یا اشخاص پرونده استفاده شده است. ابتدا ارتباط‌های وابسته را تعیین تکلیف کنید؛ موکل حذف نشد.");
+        }
+      }
+
+      const table = module === "cases" ? "cases" : module === "clients" ? "clients" : null;
+      if (!table) throw new Error("حذف در این بخش فعال نیست.");
+      const { error } = await supabase.from(table).delete().eq("id", recordId).eq("office_id", officeId);
+      if (error) throw new Error(error.message);
+      setLocalRows((current) => current.filter((item) => String(item.id) !== recordId));
+      if (editingRow && String(editingRow.id) === recordId) setEditingRow(null);
+      setMessage(module === "cases" ? "پرونده و اطلاعات وابسته آن حذف شد." : "موکل و ارتباط‌های وابسته آن حذف شد.");
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "حذف انجام نشد.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function uploadDocument(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedFile) {
@@ -638,7 +694,14 @@ export default function ModuleClient({
                       {module === "documents" ? (
                         <button onClick={() => downloadDocument(row)} disabled={busy} className="btn secondary"><Download size={15} />دریافت</button>
                       ) : (
-                        <button onClick={() => setEditingRow(row)} className="btn secondary"><Pencil size={15} />ویرایش</button>
+                        <div className="inline-flex items-center gap-2">
+                          <button onClick={() => setEditingRow(row)} className="btn secondary"><Pencil size={15} />ویرایش</button>
+                          {(module === "cases" || module === "clients") && (role === "owner" || role === "admin") && (
+                            <button type="button" onClick={() => deleteRecord(row)} disabled={busy} className="btn secondary text-red-700 border-red-200 hover:bg-red-50 disabled:opacity-50" aria-label="حذف رکورد">
+                              <Trash2 size={15} />حذف
+                            </button>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>
