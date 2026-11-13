@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, FileUp, Pencil, Plus, Save, ShieldCheck, Trash2, X } from "lucide-react";
+import { Download, FileUp, Pencil, Plus, Save, ShieldCheck, Trash2, X, Search, Eye } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Row = Record<string, unknown>;
@@ -128,6 +128,12 @@ const configs: Record<string, { table: string; fields: Field[]; columns: string[
     columns: ["display_name", "role", "status", "created_at"],
     labels: { display_name: "نام عضو", role: "نقش", status: "وضعیت", created_at: "تاریخ عضویت" },
   },
+  "project-archive": {
+    table: "project_archive_conversations",
+    fields: [],
+    columns: ["title", "category", "source_updated_at", "message_count", "case_number_matches", "archive_number_matches", "review_status", "content_available"],
+    labels: { title: "عنوان گفتگو", category: "دسته‌بندی", source_updated_at: "آخرین تغییر منبع", message_count: "تعداد پیام", case_number_matches: "شماره پرونده", archive_number_matches: "شماره بایگانی", review_status: "وضعیت بازبینی", content_available: "متن کامل" },
+  },
 };
 
 function normalizeDigits(value: string) {
@@ -165,7 +171,7 @@ function displayValue(value: unknown, key: string) {
   if (value === null || value === undefined || value === "") return "—";
   if (Array.isArray(value)) return value.join("، ") || "ثبت نشده";
   if (key === "contract_amount" && Number.isFinite(Number(value))) return new Intl.NumberFormat("fa-IR").format(Number(value));
-  if (key === "due_at" || key === "occurred_at" || key === "created_at" || key === "updated_at" || key === "next_hearing_at" || key === "extracted_at") {
+  if (key === "due_at" || key === "occurred_at" || key === "created_at" || key === "updated_at" || key === "source_created_at" || key === "source_updated_at" || key === "next_hearing_at" || key === "extracted_at") {
     const date = new Date(String(value));
     if (Number.isNaN(date.getTime())) return String(value);
     return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
@@ -195,6 +201,9 @@ function displayValue(value: unknown, key: string) {
     owner: "مالک دفتر", admin: "مدیر", lawyer: "وکیل", staff: "کارمند",
     accountant: "حسابدار", viewer: "مشاهده‌گر",
     invited: "دعوت‌شده",
+    case_matter: "پرونده و موضوع حقوقی", office_system: "مدیریت و توسعه دفتر", legal_research: "پژوهش حقوقی", legal_study: "مطالعات حقوقی",
+    imported: "واردشده", library_indexed: "نمایه‌شده در کتابخانه", content_imported: "متن واردشده",
+    true: "موجود", false: "موجود نیست",
   };
   return translations[String(value)] ?? String(value);
 }
@@ -236,6 +245,8 @@ export default function ModuleClient({
   const [accessCanUpload, setAccessCanUpload] = useState(false);
   const [newLawyerName, setNewLawyerName] = useState("محمدجعفر کریمی‌زاده");
   const [createdCredential, setCreatedCredential] = useState("");
+  const [archiveFilter, setArchiveFilter] = useState("");
+  const [selectedArchiveConversation, setSelectedArchiveConversation] = useState<Row | null>(null);
 
   useEffect(() => { setLocalRows(rows); }, [rows]);
   useEffect(() => {
@@ -251,6 +262,14 @@ export default function ModuleClient({
 
   const columns = config.columns;
   const memberOnly = module === "settings";
+  const visibleRows = module === "project-archive"
+    ? localRows.filter((row) => {
+        const query = normalizeDigits(archiveFilter.trim()).toLocaleLowerCase();
+        if (!query) return true;
+        const haystack = normalizeDigits([row.title, row.category, row.case_number_matches, row.archive_number_matches].map((value) => Array.isArray(value) ? value.join(" ") : String(value ?? "")).join(" ")).toLocaleLowerCase();
+        return haystack.includes(query);
+      })
+    : localRows;
 
   async function saveRecord(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -300,6 +319,27 @@ export default function ModuleClient({
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "ذخیره اطلاعات انجام نشد.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openArchiveConversation(row: Row) {
+    setBusy(true);
+    setMessage("");
+    try {
+      const { data, error } = await supabase
+        .from("project_archive_conversations")
+        .select("id,title,content,source_created_at,source_updated_at,message_count,case_number_matches,archive_number_matches,case_id,case_candidate_ids")
+        .eq("office_id", officeId)
+        .eq("id", String(row.id))
+        .eq("content_available", true)
+        .maybeSingle();
+      if (error || !data) throw new Error(error?.message ?? "متن گفتگو پیدا نشد.");
+      const fullContent = String(data.content ?? "");
+      setSelectedArchiveConversation({ ...data, content: fullContent.slice(0, 60000), contentTruncated: fullContent.length > 60000, fullContentLength: fullContent.length });
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "بازیابی گفتگوی آرشیوی انجام نشد.");
     } finally {
       setBusy(false);
     }
@@ -580,7 +620,15 @@ export default function ModuleClient({
 
   return (
     <div className="space-y-5">
-      {module === "documents" ? (
+      {module === "project-archive" ? (
+        <section className="card">
+          <div className="flex items-center gap-3 mb-3"><div className="feature-icon"><Archive size={19} /></div><div><h2 className="font-bold">آرشیو واردشده از ChatGPT</h2><p className="text-xs text-slate-500 mt-1">۱۲۴ گفتگوی پالایش‌شده با ۲٬۹۸۶ پیام؛ متن‌ها در پایگاه داده دفتر نگهداری می‌شوند.</p></div></div>
+          <label className="field-label">جست‌وجو در عنوان، شماره پرونده و بایگانی
+            <div className="relative"><Search size={16} className="absolute right-3 top-3 text-slate-400" /><input value={archiveFilter} onChange={(event) => setArchiveFilter(event.target.value)} placeholder="نام موکل، شماره پرونده یا موضوع را وارد کنید" className="field-input pr-9" /></div>
+          </label>
+          <p className="text-xs text-slate-500 mt-3 leading-6">ارتباط برخی گفتگوها با بیش از یک پرونده صرفاً نامزد است. پیام‌های کاربر از پاسخ‌های قبلی دستیار تفکیک شده‌اند؛ پاسخ‌های قبلی مدل سند اثباتی محسوب نمی‌شوند.</p>
+        </section>
+      ) : module === "documents" ? (
         <section className="card">
           <div className="flex items-center gap-3 mb-4"><div className="feature-icon"><FileUp size={19} /></div><div><h2 className="font-bold">بارگذاری سند جدید</h2><p className="text-xs text-slate-500 mt-1">فایل در مخزن خصوصی دفتر نگهداری می‌شود؛ نشانی عمومی برای آن ساخته نمی‌شود.</p></div></div>
           <form onSubmit={uploadDocument} className="grid md:grid-cols-2 gap-4">
@@ -643,17 +691,26 @@ export default function ModuleClient({
 
       {message && <div className="card text-sm leading-7" role="status">{message}</div>}
 
+      {module === "project-archive" && selectedArchiveConversation && (
+        <section className="card">
+          <div className="flex items-start justify-between gap-3 mb-3"><div><h2 className="font-bold">{String(selectedArchiveConversation.title ?? "گفتگوی آرشیوی")}</h2><p className="text-xs text-slate-500 mt-1">{displayValue(selectedArchiveConversation.source_updated_at, "source_updated_at")} · {displayValue(selectedArchiveConversation.message_count, "message_count")} پیام</p></div><button type="button" onClick={() => setSelectedArchiveConversation(null)} className="btn secondary"><X size={15} />بستن</button></div>
+          <p className="text-xs text-slate-500 mb-3">متن نقش‌محور گفتگو. پیام‌های USER اظهارات قبلی کاربر و پیام‌های ASSISTANT خروجی مدل در زمان گذشته هستند.</p>
+          {Boolean(selectedArchiveConversation.contentTruncated) && <p className="text-xs text-amber-700 mb-2">برای نمایش سریع، متن به ۶۰٬۰۰۰ نویسه نخست محدود شده است؛ نسخه کامل در آرشیو پایگاه داده نگهداری می‌شود.</p>}
+          <pre dir="auto" className="max-h-[65vh] overflow-auto whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-6">{String(selectedArchiveConversation.content ?? "")}</pre>
+        </section>
+      )}
+
       <section className="card">
         <div className="flex items-center justify-between gap-3 mb-4">
           <div><h2 className="font-bold">فهرست {title}</h2><p className="text-xs text-slate-500 mt-1">حداکثر ۱۰۰ رکورد اخیر نمایش داده می‌شود.</p></div>
-          <span className="pill">{localRows.length} رکورد</span>
+          <span className="pill">{visibleRows.length} رکورد</span>
         </div>
         {localRows.length === 0 ? (
           <div className="text-sm text-slate-500 py-8 text-center">هنوز رکوردی ثبت نشده است.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr>{columns.map((key) => <th className="text-right p-3 border-b whitespace-nowrap" key={key}>{config.labels[key] ?? key}</th>)}<th className="p-3 border-b">عملیات</th></tr></thead>
+              <thead><tr>{columns.map((key) => <th className="text-right p-3 border-b whitespace-nowrap" key={key}>{config.labels[key] ?? key}</th>)}<th className="p-3 border-b">{module === "project-archive" ? "نمایش" : "عملیات"}</th></tr></thead>
               <tbody>
                 {module === "cases" ? (() => {
                   const groups = new Map<string, Row[]>();
@@ -679,16 +736,20 @@ export default function ModuleClient({
                         <tr key={String(row.id)} className="hover:bg-slate-50">
                           {columns.map((key) => <td className="p-3 border-b border-slate-100 max-w-xs" key={key}>{displayValue(row[key], key)}</td>)}
                           <td className="p-3 border-b border-slate-100 whitespace-nowrap">
-                            <div className="inline-flex items-center gap-2">
-                              <button onClick={() => setEditingRow(row)} className="btn secondary"><Pencil size={15} />ویرایش</button>
-                              {(role === "owner" || role === "admin") && <button type="button" onClick={() => deleteRecord(row)} disabled={busy} className="btn secondary text-red-700 border-red-200 hover:bg-red-50 disabled:opacity-50"><Trash2 size={15} />حذف</button>}
-                            </div>
+                            {module === "project-archive" ? (
+                              <button type="button" onClick={() => openArchiveConversation(row)} disabled={busy || !row.content_available} className="btn secondary"><Eye size={15} />مشاهده گفتگو</button>
+                            ) : (
+                              <div className="inline-flex items-center gap-2">
+                                <button onClick={() => setEditingRow(row)} className="btn secondary"><Pencil size={15} />ویرایش</button>
+                                {(role === "owner" || role === "admin") && <button type="button" onClick={() => deleteRecord(row)} disabled={busy} className="btn secondary text-red-700 border-red-200 hover:bg-red-50 disabled:opacity-50"><Trash2 size={15} />حذف</button>}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}
                     </Fragment>
                   ));
-                })() : localRows.map((row) => (
+                })() : visibleRows.map((row) => (
                   <tr key={String(row.id)} className="hover:bg-slate-50">
                     {columns.map((key) => <td className="p-3 border-b border-slate-100 max-w-xs" key={key}>{key === "source_url" && row[key] ? <a href={String(row[key])} target="_blank" rel="noreferrer" className="text-blue-700 underline">مشاهده منبع</a> : key === "cases" ? String((row.cases as { title?: string; case_number?: string } | null)?.title ?? "—") + (((row.cases as { case_number?: string } | null)?.case_number) ? " · " + (row.cases as { case_number?: string }).case_number : "") : displayValue(row[key], key)}</td>)}
                     <td className="p-3 border-b border-slate-100 whitespace-nowrap">
