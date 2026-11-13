@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, FileUp, Pencil, Plus, Save, ShieldCheck, Trash2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -66,12 +66,14 @@ const configs: Record<string, { table: string; fields: Field[]; columns: string[
       { name: "full_name", label: "نام / عنوان شخص", required: true },
       { name: "client_type", label: "نوع موکل", type: "select", options: selectOptions.client_type },
       { name: "phone", label: "تلفن" },
-      { name: "email", label: "ایمیل", type: "email" },
+      { name: "contract_number", label: "شماره قرارداد" },
+      { name: "contract_amount", label: "مبلغ قرارداد", type: "number" },
+      { name: "contract_amount_unit", label: "واحد مبلغ", type: "select", options: selectOptions.amount_unit },
       { name: "address", label: "نشانی", type: "textarea" },
       { name: "notes", label: "یادداشت", type: "textarea" },
     ],
-    columns: ["full_name", "client_type", "phone", "email", "created_at"],
-    labels: { full_name: "نام", client_type: "نوع", phone: "تلفن", email: "ایمیل", created_at: "تاریخ ثبت" },
+    columns: ["full_name", "client_type", "phone", "contract_number", "contract_amount", "contract_amount_unit", "created_at"],
+    labels: { full_name: "نام", client_type: "نوع", phone: "تلفن", contract_number: "شماره قرارداد", contract_amount: "مبلغ قرارداد", contract_amount_unit: "واحد", created_at: "تاریخ ثبت" },
   },
   deadlines: {
     table: "deadlines",
@@ -133,67 +135,36 @@ function normalizeDigits(value: string) {
     .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
 }
 
-function jalaliParts(date: Date, timeZone = "Asia/Tehran") {
-  const parts = new Intl.DateTimeFormat("en-US-u-ca-persian-nu-latn", {
-    timeZone, year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(date);
-  const map: Record<string, string> = {};
-  parts.forEach((part) => { map[part.type] = part.value; });
-  return { year: map.year, month: map.month.padStart(2, "0"), day: map.day.padStart(2, "0") };
-}
-
-function jalaliDateToGregorian(value: string) {
-  const normalized = normalizeDigits(value.trim()).replace(/-/g, "/");
-  const match = normalized.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
-  if (!match) throw new Error("تاریخ را به شکل ۱۴۰۵/۰۸/۲۱ وارد کنید.");
-  const jy = Number(match[1]), jm = Number(match[2]), jd = Number(match[3]);
-  if (jm < 1 || jm > 12 || jd < 1 || jd > 31) throw new Error("تاریخ شمسی معتبر نیست.");
-  const start = Date.UTC(jy + 621, 2, 15);
-  for (let offset = 0; offset <= 370; offset += 1) {
-    const date = new Date(start + offset * 86400000);
-    const parts = jalaliParts(date, "UTC");
-    if (Number(parts.year) === jy && Number(parts.month) === jm && Number(parts.day) === jd) {
-      return date.getUTCFullYear() + "-" + String(date.getUTCMonth() + 1).padStart(2, "0") + "-" + String(date.getUTCDate()).padStart(2, "0");
-    }
-  }
-  throw new Error("تاریخ شمسی واردشده در تقویم معتبر پیدا نشد.");
-}
-
-function jalaliDateTimeToIso(value: string) {
-  const normalized = normalizeDigits(value.trim()).replace("T", " ");
-  const [datePart, timePart = "00:00"] = normalized.split(/\\s+/);
-  const date = jalaliDateToGregorian(datePart);
-  const time = timePart.match(/^(\\d{1,2}):(\\d{2})$/);
-  if (!time || Number(time[1]) > 23 || Number(time[2]) > 59) {
-    throw new Error("ساعت را به شکل ۱۴:۳۰ وارد کنید.");
-  }
-  return date + "T" + time[1].padStart(2, "0") + ":" + time[2] + ":00+03:30";
-}
-
-function jalaliInputValue(value: unknown, withTime = false) {
-  if (!value) return "";
-  const date = new Date(String(value).length === 10 ? String(value) + "T12:00:00Z" : String(value));
-  if (Number.isNaN(date.getTime())) return String(value);
-  const parts = jalaliParts(date);
-  if (!withTime) return parts.year + "/" + parts.month + "/" + parts.day;
-  const timeParts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Tehran", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-  }).formatToParts(date);
-  const time: Record<string, string> = {};
-  timeParts.forEach((part) => { time[part.type] = part.value; });
-  return parts.year + "/" + parts.month + "/" + parts.day + " " + time.hour + ":" + time.minute;
+function tehranDateTimeToIso(value: string) {
+  const normalized = normalizeDigits(value.trim()).replace(" ", "T");
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!match) throw new Error("تاریخ و ساعت را از پنجره انتخاب تاریخ و ساعت تعیین کنید.");
+  const [, year, month, day, hour, minute] = match;
+  const y = Number(year), m = Number(month), d = Number(day), h = Number(hour), min = Number(minute);
+  const check = new Date(Date.UTC(y, m - 1, d));
+  if (check.getUTCFullYear() !== y || check.getUTCMonth() !== m - 1 || check.getUTCDate() !== d || h > 23 || min > 59) throw new Error("تاریخ یا ساعت انتخاب‌شده معتبر نیست.");
+  return year + "-" + month + "-" + day + "T" + hour + ":" + minute + ":00+03:30";
 }
 
 function inputValue(value: unknown, type?: string) {
   if (value === null || value === undefined) return "";
-  if (type === "datetime-local") return jalaliInputValue(value, true);
-  if (type === "date") return jalaliInputValue(value);
-  return String(value);
+  const raw = String(value);
+  if (type === "date") return raw.slice(0, 10);
+  if (type === "datetime-local") {
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) return "";
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tehran", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(date);
+    const values: Record<string, string> = {};
+    parts.forEach((part) => { values[part.type] = part.value; });
+    return values.year + "-" + values.month + "-" + values.day + "T" + values.hour + ":" + values.minute;
+  }
+  return raw;
 }
 
 function displayValue(value: unknown, key: string) {
   if (value === null || value === undefined || value === "") return "—";
   if (Array.isArray(value)) return value.join("، ") || "ثبت نشده";
+  if (key === "contract_amount" && Number.isFinite(Number(value))) return new Intl.NumberFormat("fa-IR").format(Number(value));
   if (key === "due_at" || key === "occurred_at" || key === "created_at" || key === "updated_at" || key === "next_hearing_at" || key === "extracted_at") {
     const date = new Date(String(value));
     if (Number.isNaN(date.getTime())) return String(value);
@@ -291,8 +262,8 @@ export default function ModuleClient({
       config.fields.forEach((field) => {
         const raw = values[field.name] ?? "";
         if (field.type === "number") payload[field.name] = raw === "" ? null : Number(raw);
-        else if (field.type === "datetime-local") payload[field.name] = raw ? jalaliDateTimeToIso(raw) : null;
-        else if (field.type === "date") payload[field.name] = raw ? jalaliDateToGregorian(raw) : null;
+        else if (field.type === "datetime-local") payload[field.name] = raw ? tehranDateTimeToIso(raw) : null;
+        else if (field.type === "date") payload[field.name] = raw || null;
         else payload[field.name] = raw === "" ? null : raw;
       });
 
@@ -314,7 +285,7 @@ export default function ModuleClient({
       if (module === "finance") {
         payload.amount_unit = payload.amount_unit || "toman";
         payload.occurred_at = values.occurred_at
-          ? jalaliDateToGregorian(values.occurred_at) + "T12:00:00+03:30"
+          ? values.occurred_at + "T12:00:00+03:30"
           : new Date().toISOString();
       }
       if (!editingRow) payload.created_by = userId;
@@ -661,7 +632,7 @@ export default function ModuleClient({
                 ) : field.type === "textarea" ? (
                   <textarea required={field.required} rows={3} value={values[field.name] ?? ""} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} className="field-input" />
                 ) : (
-                  <input required={field.required} type={field.type === "date" || field.type === "datetime-local" ? "text" : field.type ?? "text"} inputMode={field.type === "date" || field.type === "datetime-local" ? "numeric" : undefined} step={field.type === "number" ? "any" : undefined} min={field.type === "number" ? "0" : undefined} value={values[field.name] ?? ""} placeholder={field.type === "datetime-local" ? "۱۴۰۵/۰۸/۲۱ ۱۴:۳۰" : field.type === "date" ? "۱۴۰۵/۰۸/۲۱" : field.placeholder} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} className="field-input" />
+                  <input required={field.required} type={field.type ?? "text"} lang="fa-IR" dir={field.type === "date" || field.type === "datetime-local" ? "ltr" : undefined} step={field.type === "number" ? "any" : undefined} min={field.type === "number" ? "0" : undefined} value={values[field.name] ?? ""} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} className="field-input" />
                 )}
               </label>
             ))}
