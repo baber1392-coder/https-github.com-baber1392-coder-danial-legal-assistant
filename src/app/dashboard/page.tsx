@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   Scale, FolderOpen, Users, CalendarClock, FileText, BookOpen, Wallet,
-  Settings, ShieldCheck, ArrowUpLeft, MessageCircle
+  Settings, ShieldCheck, ArrowUpLeft, MessageCircle, Activity
 } from "lucide-react";
 import { getUserOffice } from "@/lib/supabase/office";
 
@@ -15,6 +15,7 @@ const navigation = [
   { label: "پژوهش حقوقی", href: "/dashboard/research", icon: BookOpen },
   { label: "امور مالی", href: "/dashboard/finance", icon: Wallet },
   { label: "اعضا و تنظیمات", href: "/dashboard/settings", icon: Settings },
+  { label: "سلامت سامانه", href: "/dashboard/system", icon: Activity },
 ];
 
 function formatTehran(value: string) {
