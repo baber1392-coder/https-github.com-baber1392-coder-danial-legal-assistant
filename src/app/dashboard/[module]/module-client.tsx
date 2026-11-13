@@ -177,8 +177,7 @@ function displayValue(value: unknown, key: string) {
     if (Number.isNaN(date.getTime())) return String(value);
     return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "medium", timeZone: "Asia/Tehran" }).format(date);
   }
-  const translations: Record<string, string> = {
-    active: "فعال", pending: "در انتظار", closed: "مختومه", suspended: "متوقف",
+  const translations: Record<string, string> = {    active: "فعال", pending: "در انتظار", closed: "مختومه", suspended: "متوقف",
     open: "باز", completed: "انجام‌شده", cancelled: "لغوشده",
     needs_review: "نیازمند بررسی", verified: "بررسی‌شده",
     unverified: "تأییدنشده", reviewed: "بازبینی‌شده",
@@ -357,8 +356,7 @@ export default function ModuleClient({
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "حذف انجام نشد.");
-    } finally {
-      setBusy(false);
+    } finally {      setBusy(false);
     }
   }
 
@@ -537,8 +535,7 @@ export default function ModuleClient({
                 <option value="">انتخاب پرونده</option>
                 {caseOptions.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
               </select>
-            </label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={accessCanUpdate} onChange={(event) => setAccessCanUpdate(event.target.checked)} /> اجازه ویرایش اطلاعات پرونده</label>
+            </label>            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={accessCanUpdate} onChange={(event) => setAccessCanUpdate(event.target.checked)} /> اجازه ویرایش اطلاعات پرونده</label>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={accessCanUpload} onChange={(event) => setAccessCanUpload(event.target.checked)} /> اجازه بارگذاری اسناد</label>
             <div className="md:col-span-2"><button disabled={busy} className="rounded-xl bg-[#10243a] text-white px-5 py-3 disabled:opacity-60">{busy ? "در حال ثبت..." : "ثبت دسترسی"}</button></div>
           </form>
@@ -660,8 +657,14 @@ export default function ModuleClient({
               <tbody>
                 {module === "cases" ? (() => {
                   const groups = new Map<string, Row[]>();
-                  [...localRows].sort((a, b) => String(a.client_names ?? "").localeCompare(String(b.client_names ?? ""), "fa")).forEach((row) => {
-                    const key = String(row.client_names ?? "موکل ثبت نشده / نیازمند تکمیل");
+                  [...localRows].sort((a, b) => {
+                    const nameA = typeof a.client_names === "string" && a.client_names.trim() ? a.client_names.trim() : "پرونده‌های شخصی دانیال رحیمی";
+                    const nameB = typeof b.client_names === "string" && b.client_names.trim() ? b.client_names.trim() : "پرونده‌های شخصی دانیال رحیمی";
+                    return nameA.localeCompare(nameB, "fa");
+                  }).forEach((row) => {
+                    const key = typeof row.client_names === "string" && row.client_names.trim()
+                      ? row.client_names.trim()
+                      : "پرونده‌های شخصی دانیال رحیمی";
                     groups.set(key, [...(groups.get(key) ?? []), row]);
                   });
                   return Array.from(groups.entries()).map(([clientName, group]) => (
