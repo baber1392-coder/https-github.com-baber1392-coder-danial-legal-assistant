@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, FileUp, Pencil, Plus, Save, ShieldCheck, Trash2, X, Search, Eye } from "lucide-react";
+import { Download, FileUp, Pencil, Plus, Save, ShieldCheck, Trash2, X, Search, Eye, Archive } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Row = Record<string, unknown>;
@@ -702,10 +702,10 @@ export default function ModuleClient({
 
       <section className="card">
         <div className="flex items-center justify-between gap-3 mb-4">
-          <div><h2 className="font-bold">فهرست {title}</h2><p className="text-xs text-slate-500 mt-1">حداکثر ۱۰۰ رکورد اخیر نمایش داده می‌شود.</p></div>
+          <div><h2 className="font-bold">فهرست {title}</h2><p className="text-xs text-slate-500 mt-1">{module === "project-archive" ? "حداکثر ۲۵۰ گفتگوی آرشیوی نمایش داده می‌شود." : "حداکثر ۱۰۰ رکورد اخیر نمایش داده می‌شود."}</p></div>
           <span className="pill">{visibleRows.length} رکورد</span>
         </div>
-        {localRows.length === 0 ? (
+        {visibleRows.length === 0 ? (
           <div className="text-sm text-slate-500 py-8 text-center">هنوز رکوردی ثبت نشده است.</div>
         ) : (
           <div className="overflow-x-auto">
