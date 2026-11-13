@@ -2,13 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   Scale, FolderOpen, Users, CalendarClock, FileText, BookOpen, Wallet,
-  Settings, ShieldCheck, ArrowUpLeft, MessageCircle, Activity, ExternalLink
+  Settings, ShieldCheck, ArrowUpLeft, MessageCircle, Activity, ExternalLink, Archive
 } from "lucide-react";
 import { getUserOffice } from "@/lib/supabase/office";
 
 const navigation = [
   { label: "دستیار هوشمند", href: "/dashboard/assistant", icon: MessageCircle },
   { label: "پرونده‌ها", href: "/dashboard/cases", icon: FolderOpen },
+  { label: "آرشیو گفتگوهای پروژه", href: "/dashboard/project-archive", icon: Archive },
   { label: "موکلان", href: "/dashboard/clients", icon: Users },
   { label: "اسناد و مدارک", href: "/dashboard/documents", icon: FileText },
   { label: "مواعد و جلسات", href: "/dashboard/deadlines", icon: CalendarClock },
@@ -30,20 +31,22 @@ export default async function DashboardPage() {
   const { supabase, user, office } = context;
   const now = new Date().toISOString();
 
-  const [cases, clients, deadlines, documents, recent] = await Promise.all([
+  const [cases, clients, deadlines, documents, archive, recent] = await Promise.all([
     supabase.from("cases").select("id", { count: "exact", head: true }).eq("office_id", office.id).eq("status", "active"),
     supabase.from("clients").select("id", { count: "exact", head: true }).eq("office_id", office.id),
     supabase.from("deadlines").select("id", { count: "exact", head: true }).eq("office_id", office.id).eq("status", "open").gte("due_at", now),
     supabase.from("case_documents").select("id", { count: "exact", head: true }).eq("office_id", office.id),
+    supabase.from("project_archive_conversations").select("id", { count: "exact", head: true }).eq("office_id", office.id),
     supabase.from("deadlines").select("id,title,due_at,deadline_type,verification_status").eq("office_id", office.id).eq("status", "open").gte("due_at", now).order("due_at", { ascending: true }).limit(5),
   ]);
 
-  const hasError = [cases.error, clients.error, deadlines.error, documents.error, recent.error].some(Boolean);
+  const hasError = [cases.error, clients.error, deadlines.error, documents.error, archive.error, recent.error].some(Boolean);
   const stats = [
     { label: "پرونده‌های فعال", value: cases.count, note: "پرونده‌های در جریان", href: "/dashboard/cases", icon: FolderOpen },
     { label: "موکلان", value: clients.count, note: "اشخاص و شرکت‌های ثبت‌شده", href: "/dashboard/clients", icon: Users },
     { label: "مواعد پیش‌رو", value: deadlines.count, note: "موعدهای باز از زمان حاضر", href: "/dashboard/deadlines", icon: CalendarClock },
     { label: "اسناد بایگانی‌شده", value: documents.count, note: "فایل‌های خصوصی دفتر", href: "/dashboard/documents", icon: FileText },
+    { label: "گفتگوهای پروژه", value: archive.count, note: "آرشیو پالایش‌شده ChatGPT", href: "/dashboard/project-archive", icon: Archive },
   ];
 
   return (
