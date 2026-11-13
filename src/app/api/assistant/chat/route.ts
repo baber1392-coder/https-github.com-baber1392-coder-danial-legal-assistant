@@ -123,10 +123,10 @@ export async function POST(request: NextRequest) {
   const context = await getOfficeContext();
   if (isResponse(context)) return context;
 
-  const provider = process.env.GEMINI_API_KEY ? "gemini" : process.env.OPENAI_API_KEY ? "openai" : null;
+  const provider = process.env.GROQ_API_KEY ? "groq" : process.env.GEMINI_API_KEY ? "gemini" : process.env.OPENAI_API_KEY ? "openai" : null;
   if (!provider) {
     return NextResponse.json(
-      { error: "مدل هوش مصنوعی پیکربندی نشده است. برای فعال‌سازی طرح رایگان، مدیر سامانه باید GEMINI_API_KEY را در Environment سرویس Render ثبت کند." },
+      { error: "مدل هوش مصنوعی پیکربندی نشده است. مدیر سامانه باید کلید GROQ_API_KEY را در Environment سرویس Render ثبت کند." },
       { status: 503 }
     );
   }
@@ -294,14 +294,46 @@ export async function POST(request: NextRequest) {
     content: item.content,
   }));
 
-  const model = provider === "gemini"
-    ? (process.env.GEMINI_MODEL || "gemini-2.5-flash")
-    : (process.env.OPENAI_MODEL || "gpt-6-astra");
+  const model = provider === "groq"
+    ? (process.env.GROQ_MODEL || "openai/gpt-oss-120b")
+    : provider === "gemini"
+      ? (process.env.GEMINI_MODEL || "gemini-2.5-flash")
+      : (process.env.OPENAI_MODEL || "gpt-6-astra");
   const useWebSearch = body.useWebSearch === true;
   let assistantText = "";
 
   try {
-    if (provider === "gemini") {
+    if (provider === "groq") {
+      const messages = [
+        { role: "system", content: SYSTEM_INSTRUCTIONS + (caseContext ? "\\n\\n" + caseContext : "") },
+        ...input,
+      ];
+      const apiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ model, messages, temperature: 0.2, max_tokens: 3000, stream: false }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(90000),
+      });
+      const result = await apiResponse.json();
+      if (!apiResponse.ok) {
+        const apiMessage = typeof result?.error?.message === "string" ? result.error.message : "Groq API error";
+        console.error("Groq API request failed", { status: apiResponse.status, message: apiMessage });
+        if (apiResponse.status === 429) {
+          return NextResponse.json({ error: "محدودیت نرخ یا سهمیه سرویس هوش مصنوعی اعمال شده است. کمی بعد دوباره تلاش کنید." }, { status: 429 });
+        }
+        if (apiResponse.status === 401 || apiResponse.status === 403) {
+          return NextResponse.json({ error: "کلید یا دسترسی سرویس هوش مصنوعی معتبر نیست. تنظیمات کلید در Render بررسی شود." }, { status: 502 });
+        }
+        return NextResponse.json({ error: "سرویس هوش مصنوعی درخواست را نپذیرفت." }, { status: 502 });
+      }
+      assistantText = typeof result.choices?.[0]?.message?.content === "string"
+        ? result.choices[0].message.content.trim()
+        : "";
+    } else if (provider === "gemini") {
       const contents = input.map((item) => ({
         role: item.role === "assistant" ? "model" : "user",
         parts: [{ text: item.content }],
@@ -435,7 +467,7 @@ export async function POST(request: NextRequest) {
     model,
     provider,
     webSearchUsed: useWebSearch && provider === "openai",
-    webSearchUnavailable: useWebSearch && provider === "gemini",
+    webSearchUnavailable: useWebSearch && provider !== "openai",
     caseContextUsed: Boolean(caseContext),
   });
 }
