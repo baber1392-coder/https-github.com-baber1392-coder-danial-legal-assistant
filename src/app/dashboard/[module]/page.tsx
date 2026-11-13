@@ -22,7 +22,7 @@ export default async function ModulePage({ params }: { params: Promise<{ module:
 
   const { supabase, user, office, role } = await requireOffice();
   const archiveColumns = "id,title,category,source_created_at,source_updated_at,message_count,case_number_matches,archive_number_matches,review_status,content_available,case_id,case_candidate_ids,import_status";
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from(config.table)
     .select(module === "project-archive" ? archiveColumns : "*")
     .eq("office_id", office.id)
