@@ -475,7 +475,7 @@ export default function ModuleClient({
             <label className="field-label">نام کاربری
               <select value={newLawyerName} onChange={(event) => setNewLawyerName(event.target.value)} className="field-input">
                 <option value="محمدجعفر کریمی‌زاده">محمدجعفر کریمی‌زاده</option>
-                <option value="حسین صمدی">حسین صمدی</option>
+                <option value="حسین صفری">حسین صفری</option>
               </select>
             </label>
             <button type="button" disabled={busy} onClick={createLawyerAccount} className="rounded-xl bg-[#10243a] text-white px-5 py-3 disabled:opacity-60">{busy ? "در حال ایجاد..." : "ایجاد حساب وکیل"}</button>
