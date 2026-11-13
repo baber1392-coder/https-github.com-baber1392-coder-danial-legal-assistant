@@ -334,11 +334,11 @@ export async function POST(request: NextRequest) {
         "تعداد پیام‌ها: " + (item.message_count ?? 0),
         "اظهارات کاربر در گفتگوی قبلی (خروجی دستیار در این بخش مبنای اثبات نیست):",
         userMessages.join("\n\n") || "پیام کاربر قابل استخراج نبود.",
-      ].join("\\n");
+      ].join("\n");
     });
     archiveContext = archiveBlocks.join("\n\n").slice(0, 14000);
     if (archiveContext) {
-      caseContext += "\n\nسوابق آرشیو پروژه‌های ChatGPT مرتبط با پرونده انتخاب‌شده (صرفاً سابقه گفتگو؛ نه سند رسمی):\\n" + archiveContext;
+      caseContext += "\n\nسوابق آرشیو پروژه‌های ChatGPT مرتبط با پرونده انتخاب‌شده (صرفاً سابقه گفتگو؛ نه سند رسمی):\n" + archiveContext;
     }
   }
 
