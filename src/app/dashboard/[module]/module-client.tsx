@@ -736,14 +736,10 @@ export default function ModuleClient({
                         <tr key={String(row.id)} className="hover:bg-slate-50">
                           {columns.map((key) => <td className="p-3 border-b border-slate-100 max-w-xs" key={key}>{displayValue(row[key], key)}</td>)}
                           <td className="p-3 border-b border-slate-100 whitespace-nowrap">
-                            {module === "project-archive" ? (
-                              <button type="button" onClick={() => openArchiveConversation(row)} disabled={busy || !row.content_available} className="btn secondary"><Eye size={15} />مشاهده گفتگو</button>
-                            ) : (
-                              <div className="inline-flex items-center gap-2">
-                                <button onClick={() => setEditingRow(row)} className="btn secondary"><Pencil size={15} />ویرایش</button>
-                                {(role === "owner" || role === "admin") && <button type="button" onClick={() => deleteRecord(row)} disabled={busy} className="btn secondary text-red-700 border-red-200 hover:bg-red-50 disabled:opacity-50"><Trash2 size={15} />حذف</button>}
-                              </div>
-                            )}
+                            <div className="inline-flex items-center gap-2">
+                              <button onClick={() => setEditingRow(row)} className="btn secondary"><Pencil size={15} />ویرایش</button>
+                              {(role === "owner" || role === "admin") && <button type="button" onClick={() => deleteRecord(row)} disabled={busy} className="btn secondary text-red-700 border-red-200 hover:bg-red-50 disabled:opacity-50"><Trash2 size={15} />حذف</button>}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -753,7 +749,7 @@ export default function ModuleClient({
                   <tr key={String(row.id)} className="hover:bg-slate-50">
                     {columns.map((key) => <td className="p-3 border-b border-slate-100 max-w-xs" key={key}>{key === "source_url" && row[key] ? <a href={String(row[key])} target="_blank" rel="noreferrer" className="text-blue-700 underline">مشاهده منبع</a> : key === "cases" ? String((row.cases as { title?: string; case_number?: string } | null)?.title ?? "—") + (((row.cases as { case_number?: string } | null)?.case_number) ? " · " + (row.cases as { case_number?: string }).case_number : "") : displayValue(row[key], key)}</td>)}
                     <td className="p-3 border-b border-slate-100 whitespace-nowrap">
-                      {module === "documents" ? <button onClick={() => downloadDocument(row)} disabled={busy} className="btn secondary"><Download size={15} />دریافت</button> : (
+                      {module === "documents" ? <button onClick={() => downloadDocument(row)} disabled={busy} className="btn secondary"><Download size={15} />دریافت</button> : module === "project-archive" ? <button type="button" onClick={() => openArchiveConversation(row)} disabled={busy || !row.content_available} className="btn secondary"><Eye size={15} />مشاهده گفتگو</button> : (
                         <div className="inline-flex items-center gap-2">
                           <button onClick={() => setEditingRow(row)} className="btn secondary"><Pencil size={15} />ویرایش</button>
                           {module === "clients" && (role === "owner" || role === "admin") && <button type="button" onClick={() => deleteRecord(row)} disabled={busy} className="btn secondary text-red-700 border-red-200 hover:bg-red-50 disabled:opacity-50"><Trash2 size={15} />حذف</button>}
