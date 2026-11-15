@@ -169,7 +169,7 @@ export default function AssistantChat() {
           </label>
           <label className="assistant-toggle">
             <input type="checkbox" checked={useWebSearch} onChange={(e) => setUseWebSearch(e.target.checked)} />
-            <Globe2 size={16} /> جست‌وجوی وب برای اطلاعات روز
+            <Globe2 size={16} /> پژوهش اینترنتی با Firecrawl
           </label>
         </div>
 
@@ -180,7 +180,7 @@ export default function AssistantChat() {
         )}
         {useWebSearch && (
           <div className="assistant-privacy-banner">
-            با فعال بودن جست‌وجوی وب، مدل می‌تواند برای پرسش جاری از ابزار جست‌وجوی وب استفاده کند؛ این قابلیت ممکن است هزینه API جداگانه داشته باشد.
+            با فعال بودن این گزینه، متن پرسش جاری برای جست‌وجو به Firecrawl ارسال می‌شود؛ متن پرونده و اسناد آن ارسال نمی‌شود. منابع بازیابی‌شده در اختیار دستیار قرار می‌گیرند و پاسخ باید پیوند منابع را ارائه کند. استفاده از Firecrawl ممکن است اعتبار API مصرف کند.
           </div>
         )}
 
