@@ -86,7 +86,7 @@ async function searchWithFirecrawl(query: string) {
 
   const rows = Array.isArray(result.data) ? result.data : Array.isArray(result.results) ? result.results : [];
   const sources = rows
-    .filter((item: any) => typeof item?.url === "string" && /^https?:\\/\\//i.test(item.url))
+    .filter((item: any) => typeof item?.url === "string" && (item.url.startsWith("https://") || item.url.startsWith("http://")))
     .slice(0, 6)
     .map((item: any) => ({
       title: typeof item.title === "string" ? item.title.slice(0, 300) : item.url,
