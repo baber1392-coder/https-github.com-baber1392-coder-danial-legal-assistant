@@ -171,8 +171,8 @@ export async function POST(request: NextRequest) {
   const context = await getOfficeContext();
   if (isResponse(context)) return context;
 
-  // Gemini is intentionally disabled. Use OpenAI first, then Groq, then SambaNova.
-  const provider = process.env.OPENAI_API_KEY ? "openai" : process.env.GROQ_API_KEY ? "groq" : process.env.SAMBANOVA_API_KEY ? "sambanova" : null;
+  // Gemini is disabled. Prefer Groq, then SambaNova, then OpenAI.
+  const provider = process.env.GROQ_API_KEY ? "groq" : process.env.SAMBANOVA_API_KEY ? "sambanova" : process.env.OPENAI_API_KEY ? "openai" : null;
   if (!provider) {
     return NextResponse.json(
       { error: "مدل هوش مصنوعی پیکربندی نشده است. مدیر سامانه باید یکی از کلیدهای OPENAI_API_KEY، GROQ_API_KEY یا SAMBANOVA_API_KEY را در Environment سرویس Render ثبت کند." },
@@ -548,7 +548,7 @@ export async function POST(request: NextRequest) {
         console.error("OpenAI API request failed", { status: apiResponse.status, message: apiMessage });
         if (apiResponse.status === 429 && /no credits remaining|insufficient_quota|credit_balance_exhausted/i.test(apiMessage)) {
           return NextResponse.json(
-            { error: "اعتبار API حساب OpenAI تمام شده است. برای ادامه، کلید Gemini با سهمیه رایگان تنظیم کنید یا اعتبار API تهیه شود." },
+            { error: "اعتبار API حساب OpenAI تمام شده است. کلید Groq یا SambaNova را در تنظیمات سرور بررسی کنید." },
             { status: 429 }
           );
         }
