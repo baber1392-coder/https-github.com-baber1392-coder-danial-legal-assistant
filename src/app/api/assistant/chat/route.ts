@@ -171,8 +171,8 @@ export async function POST(request: NextRequest) {
   const context = await getOfficeContext();
   if (isResponse(context)) return context;
 
-  // Prefer the explicitly configured OpenAI API key. Other providers are fallbacks only.
-  const provider = process.env.OPENAI_API_KEY ? "openai" : process.env.GROQ_API_KEY ? "groq" : process.env.GEMINI_API_KEY ? "gemini" : process.env.SAMBANOVA_API_KEY ? "sambanova" : null;
+  // Prefer Gemini when configured to avoid blocking the assistant on exhausted OpenAI API credits.
+  const provider = process.env.GEMINI_API_KEY ? "gemini" : process.env.OPENAI_API_KEY ? "openai" : process.env.GROQ_API_KEY ? "groq" : process.env.SAMBANOVA_API_KEY ? "sambanova" : null;
   if (!provider) {
     return NextResponse.json(
       { error: "مدل هوش مصنوعی پیکربندی نشده است. مدیر سامانه باید یکی از کلیدهای SAMBANOVA_API_KEY، GROQ_API_KEY، GEMINI_API_KEY یا OPENAI_API_KEY را در Environment سرویس Render ثبت کند." },
