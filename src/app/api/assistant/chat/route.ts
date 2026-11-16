@@ -171,11 +171,11 @@ export async function POST(request: NextRequest) {
   const context = await getOfficeContext();
   if (isResponse(context)) return context;
 
-  // Prefer Gemini when configured to avoid blocking the assistant on exhausted OpenAI API credits.
-  const provider = process.env.GEMINI_API_KEY ? "gemini" : process.env.OPENAI_API_KEY ? "openai" : process.env.GROQ_API_KEY ? "groq" : process.env.SAMBANOVA_API_KEY ? "sambanova" : null;
+  // Gemini is intentionally disabled. Use OpenAI first, then Groq, then SambaNova.
+  const provider = process.env.OPENAI_API_KEY ? "openai" : process.env.GROQ_API_KEY ? "groq" : process.env.SAMBANOVA_API_KEY ? "sambanova" : null;
   if (!provider) {
     return NextResponse.json(
-      { error: "مدل هوش مصنوعی پیکربندی نشده است. مدیر سامانه باید یکی از کلیدهای SAMBANOVA_API_KEY، GROQ_API_KEY، GEMINI_API_KEY یا OPENAI_API_KEY را در Environment سرویس Render ثبت کند." },
+      { error: "مدل هوش مصنوعی پیکربندی نشده است. مدیر سامانه باید یکی از کلیدهای OPENAI_API_KEY، GROQ_API_KEY یا SAMBANOVA_API_KEY را در Environment سرویس Render ثبت کند." },
       { status: 503 }
     );
   }
@@ -430,8 +430,6 @@ export async function POST(request: NextRequest) {
     ? (process.env.SAMBANOVA_MODEL || "Meta-Llama-3.3-70B-Instruct")
     : provider === "groq"
       ? (process.env.GROQ_MODEL || "openai/gpt-oss-120b")
-      : provider === "gemini"
-      ? (process.env.GEMINI_MODEL || "gemini-2.5-flash")
       : (process.env.OPENAI_MODEL || "gpt-6.1-sol");
   const useWebSearch = body.useWebSearch === true;
   let assistantText = "";
@@ -523,54 +521,6 @@ export async function POST(request: NextRequest) {
       assistantText = typeof result.choices?.[0]?.message?.content === "string"
         ? result.choices[0].message.content.trim()
         : "";
-    } else if (provider === "gemini") {
-      const contents = input.map((item) => ({
-        role: item.role === "assistant" ? "model" : "user",
-        parts: [{ text: item.content }],
-      }));
-      const apiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-        {
-          method: "POST",
-          headers: {
-            "x-goog-api-key": process.env.GEMINI_API_KEY as string,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: assistantInstructions + researchInstructions }],
-            },
-            contents,
-            generationConfig: { maxOutputTokens: 2000, temperature: 0.2 },
-          }),
-          cache: "no-store",
-          signal: AbortSignal.timeout(90000),
-        }
-      );
-
-      const result = await apiResponse.json();
-      if (!apiResponse.ok) {
-        const apiMessage = typeof result?.error?.message === "string" ? result.error.message : "Gemini API error";
-        console.error("Gemini API request failed", { status: apiResponse.status, message: apiMessage });
-        if (apiResponse.status === 429) {
-          return NextResponse.json(
-            { error: "سهمیه رایگان Gemini در حال حاضر به سقف مجاز رسیده است. پس از بازنشانی سهمیه یا در زمان دیگری دوباره تلاش کنید." },
-            { status: 429 }
-          );
-        }
-        if (apiResponse.status === 400 || apiResponse.status === 403) {
-          return NextResponse.json(
-            { error: "کلید Gemini یا دسترسی طرح رایگان معتبر نیست. وضعیت پروژه و سهمیه را در Google AI Studio بررسی کنید." },
-            { status: 502 }
-          );
-        }
-        return NextResponse.json({ error: "سرویس Gemini درخواست را نپذیرفت." }, { status: 502 });
-      }
-
-      assistantText = (result.candidates?.[0]?.content?.parts ?? [])
-        .map((part: { text?: string }) => part.text ?? "")
-        .join("\n")
-        .trim();
     } else {
       const payload: Record<string, unknown> = {
         model,
