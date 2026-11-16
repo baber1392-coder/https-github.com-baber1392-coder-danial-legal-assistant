@@ -32,25 +32,42 @@ export async function POST(request: NextRequest) {
       return "[" + date + "] " + (m.user ? "<@" + m.user + ">" : "Slack") + ": " + (m.text ?? "");
     }).join("\n").slice(0, 45000);
 
-    const provider = process.env.OPENAI_API_KEY ? "openai" : process.env.GROQ_API_KEY ? "groq" : process.env.SAMBANOVA_API_KEY ? "sambanova" : null;
-    if (!provider) return NextResponse.json({ error: "برای تولید خلاصه، کلید GROQ_API_KEY، OPENAI_API_KEY یا SAMBANOVA_API_KEY در Render تنظیم نشده است." }, { status: 503 });
-    const apiKey = provider === "groq" ? process.env.GROQ_API_KEY! : provider === "openai" ? process.env.OPENAI_API_KEY! : process.env.SAMBANOVA_API_KEY!;
-    const endpoint = provider === "groq" ? "https://api.groq.com/openai/v1/chat/completions" : provider === "openai" ? "https://api.openai.com/v1/chat/completions" : "https://api.sambanova.ai/v1/chat/completions";
-    const model = provider === "groq" ? (process.env.GROQ_MODEL || "openai/gpt-oss-120b") : provider === "openai" ? (process.env.OPENAI_MODEL || "gpt-6.1-sol") : (process.env.SAMBANOVA_MODEL || "Meta-Llama-3.3-70B-Instruct");
-    const ai = await fetch(endpoint, {
-      method: "POST",
-      headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        ...(provider === "openai" ? { max_completion_tokens: 2200 } : { temperature: 0.1, max_tokens: 2200 }),
-        messages: [
-          { role: "system", content: "You are a precise executive Slack analyst. Analyze only the supplied Slack messages from the last seven days. Respond in Persian. Separate confirmed decisions from suggestions. Never invent owners or deadlines; mark missing values as نامشخص. Return concise Markdown with sections: خلاصه مهم، تصمیمات، مسئولان و تعهدات، گام‌های بعدی، موارد نیازمند پیگیری. Mention message timestamps or Slack user IDs when useful." },
-          { role: "user", content: "Workspace: " + integration.team_name + "\nChannel: #" + info.channel.name + "\nMessages:\n" + transcript }
-        ]
-      }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(60000)
-    });
+    const provider = process.env.GEMINI_API_KEY ? "gemini" : process.env.OPENAI_API_KEY ? "openai" : process.env.GROQ_API_KEY ? "groq" : process.env.SAMBANOVA_API_KEY ? "sambanova" : null;
+    if (!provider) return NextResponse.json({ error: "برای تولید خلاصه، یکی از کلیدهای GEMINI_API_KEY، OPENAI_API_KEY، GROQ_API_KEY یا SAMBANOVA_API_KEY در Render تنظیم نشده است." }, { status: 503 });
+    const model = provider === "gemini" ? (process.env.GEMINI_MODEL || "gemini-2.5-flash") : provider === "groq" ? (process.env.GROQ_MODEL || "openai/gpt-oss-120b") : provider === "openai" ? (process.env.OPENAI_MODEL || "gpt-6.1-sol") : (process.env.SAMBANOVA_MODEL || "Meta-Llama-3.3-70B-Instruct");
+    const messages = [
+      { role: "system", content: "You are a precise executive Slack analyst. Analyze only the supplied Slack messages from the last seven days. Respond in Persian. Separate confirmed decisions from suggestions. Never invent owners or deadlines; mark missing values as نامشخص. Return concise Markdown with sections: خلاصه مهم، تصمیمات، مسئولان و تعهدات، گام‌های بعدی، موارد نیازمند پیگیری. Mention message timestamps or Slack user IDs when useful." },
+      { role: "user", content: "Workspace: " + integration.team_name + "\\nChannel: #" + info.channel.name + "\\nMessages:\\n" + transcript }
+    ];
+    let ai: Response;
+    if (provider === "gemini") {
+      const contents = messages.map((item, index) => ({ role: index === 0 ? "user" : "user", parts: [{ text: item.content }] }));
+      const gemini = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+        method: "POST",
+        headers: { "x-goog-api-key": process.env.GEMINI_API_KEY!, "Content-Type": "application/json" },
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: messages[0].content }] }, contents: [{ role: "user", parts: [{ text: messages[1].content }] }], generationConfig: { maxOutputTokens: 2200, temperature: 0.1 } }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(60000)
+      });
+      const geminiResult = await gemini.json();
+      if (!gemini.ok) {
+        console.error("Slack summary Gemini failed", { status: gemini.status, message: geminiResult?.error?.message ?? "unknown" });
+        return NextResponse.json({ error: gemini.status === 429 ? "سهمیه رایگان Gemini برای خلاصه Slack به سقف رسیده است." : "Gemini نتوانست خلاصه Slack را تولید کند؛ کلید و دسترسی بررسی شود." }, { status: gemini.status === 429 ? 429 : 502 });
+      }
+      const summaryText = (geminiResult.candidates?.[0]?.content?.parts ?? []).map((part: { text?: string }) => part.text ?? "").join("\\n").trim();
+      if (!summaryText) return NextResponse.json({ error: "پاسخ متنی از Gemini دریافت نشد." }, { status: 502 });
+      ai = new Response(JSON.stringify({ choices: [{ message: { content: summaryText } }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    } else {
+      const apiKey = provider === "groq" ? process.env.GROQ_API_KEY! : provider === "openai" ? process.env.OPENAI_API_KEY! : process.env.SAMBANOVA_API_KEY!;
+      const endpoint = provider === "groq" ? "https://api.groq.com/openai/v1/chat/completions" : provider === "openai" ? "https://api.openai.com/v1/chat/completions" : "https://api.sambanova.ai/v1/chat/completions";
+      ai = await fetch(endpoint, {
+        method: "POST",
+        headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ model, ...(provider === "openai" ? { max_completion_tokens: 2200 } : { temperature: 0.1, max_tokens: 2200 }), messages }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(60000)
+      });
+    }
     const result = await ai.json();
     if (!ai.ok) {
       console.error("Slack summary model failed", { provider, status: ai.status, error: result?.error?.message ?? "unknown" });
