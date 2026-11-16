@@ -7,10 +7,14 @@ import { ArrowRight, Bot, LoaderCircle, MessageCircle, Plus, Send, ShieldCheck, 
 type Conversation = { id: string; title: string; updated_at: string };
 type CaseOption = { id: string; title: string; case_number: string | null; archive_number: string | null; status: string };
 type ChatMessage = { id: string; role: "user" | "assistant"; content: string; created_at: string };
+type SlackChannel = { id: string; name: string; isPrivate: boolean; isMember: boolean; memberCount: number | null };
 
 export default function AssistantChat() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [cases, setCases] = useState<CaseOption[]>([]);
+  const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
+  const [slackChannelId, setSlackChannelId] = useState("");
+  const [useSlackContext, setUseSlackContext] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -59,6 +63,14 @@ export default function AssistantChat() {
   };
 
   useEffect(() => { void loadIndex(); }, [loadIndex]);
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/integrations/slack/channels", { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((data) => { if (active) setSlackChannels(data?.channels ?? []); })
+      .catch(() => { if (active) setSlackChannels([]); });
+    return () => { active = false; };
+  }, []);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages, sending]);
 
   const newConversation = () => {
@@ -91,6 +103,8 @@ export default function AssistantChat() {
           conversationId,
           caseId: caseId || null,
           useWebSearch,
+          useSlackContext,
+          slackChannelId: useSlackContext ? slackChannelId : null,
         }),
       });
       const data = await response.json();
@@ -167,6 +181,16 @@ export default function AssistantChat() {
               ))}
             </select>
           </label>
+          {slackChannels.length > 0 && (
+            <label className="assistant-control">
+              <input type="checkbox" checked={useSlackContext} onChange={(e) => setUseSlackContext(e.target.checked)} />
+              <span>استفاده از Slack در پاسخ</span>
+              <select className="field-input" value={slackChannelId} onChange={(e) => setSlackChannelId(e.target.value)} disabled={!useSlackContext}>
+                <option value="">انتخاب کانال</option>
+                {slackChannels.map((channel) => <option key={channel.id} value={channel.id}>#{channel.name}{channel.isPrivate ? " · خصوصی" : ""}{!channel.isMember ? " · بدون عضویت برنامه" : ""}</option>)}
+              </select>
+            </label>
+          )}
           <label className="assistant-toggle">
             <input type="checkbox" checked={useWebSearch} onChange={(e) => setUseWebSearch(e.target.checked)} />
             <Globe2 size={16} /> پژوهش اینترنتی با Firecrawl
@@ -176,6 +200,11 @@ export default function AssistantChat() {
         {caseId && (
           <div className="assistant-privacy-banner">
             اطلاعات پرونده و متن استخراج‌شده اسناد متصل به آن، در صورت وجود، برای پردازش به سرویس هوش مصنوعی پیکربندی‌شده ارسال می‌شود. فقط پرونده‌ای را انتخاب کنید که پردازش آن مجاز است.
+          </div>
+        )}
+        {useSlackContext && (
+          <div className="assistant-privacy-banner">
+            پیام‌های قابل بازیابی هفت روز اخیر از کانال انتخابی Slack همراه پرسش شما برای پردازش به مدل هوش مصنوعی ارسال می‌شود. فقط کانالی را انتخاب کنید که مجاز به پردازش محتوای آن هستید.
           </div>
         )}
         {useWebSearch && (
@@ -229,7 +258,7 @@ export default function AssistantChat() {
           />
           <div className="assistant-composer-foot">
             <span>حداکثر ۱۲٬۰۰۰ نویسه · پاسخ‌ها ممکن است نیازمند بررسی وکیل باشند.</span>
-            <button className="btn" type="submit" disabled={!draft.trim() || sending || loading}>
+            <button className="btn" type="submit" disabled={!draft.trim() || sending || loading || (useSlackContext && !slackChannelId)}>
               {sending ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={16} />}
               ارسال پیام
             </button>
