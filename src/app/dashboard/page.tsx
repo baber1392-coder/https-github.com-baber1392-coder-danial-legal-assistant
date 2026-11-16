@@ -17,6 +17,7 @@ const navigation = [
   { label: "امور مالی", href: "/dashboard/finance", icon: Wallet },
   { label: "اعضا و تنظیمات", href: "/dashboard/settings", icon: Settings },
   { label: "سلامت سامانه", href: "/dashboard/system", icon: Activity },
+  { label: "اتصال Slack", href: "/dashboard/integrations/slack", icon: MessageCircle },
 ];
 
 function formatTehran(value: string) {
