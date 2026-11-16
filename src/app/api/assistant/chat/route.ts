@@ -495,7 +495,7 @@ export async function POST(request: NextRequest) {
         : "";
     } else if (provider === "groq") {
       const messages = [
-        { role: "system", content: SYSTEM_INSTRUCTIONS + (caseContext ? "\n\n" + caseContext : "") + researchInstructions },
+        { role: "system", content: assistantInstructions + researchInstructions },
         ...input,
       ];
       const apiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -538,7 +538,7 @@ export async function POST(request: NextRequest) {
           },
           body: JSON.stringify({
             systemInstruction: {
-              parts: [{ text: SYSTEM_INSTRUCTIONS + (caseContext ? "\n\n" + caseContext : "") + researchInstructions }],
+              parts: [{ text: assistantInstructions + researchInstructions }],
             },
             contents,
             generationConfig: { maxOutputTokens: 2000, temperature: 0.2 },
@@ -574,7 +574,7 @@ export async function POST(request: NextRequest) {
     } else {
       const payload: Record<string, unknown> = {
         model,
-        instructions: SYSTEM_INSTRUCTIONS + (caseContext ? "\n\n" + caseContext : "") + researchInstructions,
+        instructions: assistantInstructions + researchInstructions,
         input,
         store: false,
         max_output_tokens: 2000,
