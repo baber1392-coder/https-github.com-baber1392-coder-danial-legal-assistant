@@ -41,7 +41,6 @@ export async function POST(request: NextRequest) {
     ];
     let ai: Response;
     if (provider === "gemini") {
-      const contents = messages.map((item, index) => ({ role: index === 0 ? "user" : "user", parts: [{ text: item.content }] }));
       const gemini = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
         method: "POST",
         headers: { "x-goog-api-key": process.env.GEMINI_API_KEY!, "Content-Type": "application/json" },
