@@ -32,16 +32,17 @@ export async function POST(request: NextRequest) {
       return "[" + date + "] " + (m.user ? "<@" + m.user + ">" : "Slack") + ": " + (m.text ?? "");
     }).join("\n").slice(0, 45000);
 
-    const provider = process.env.GROQ_API_KEY ? "groq" : process.env.OPENAI_API_KEY ? "openai" : process.env.SAMBANOVA_API_KEY ? "sambanova" : null;
+    const provider = process.env.OPENAI_API_KEY ? "openai" : process.env.GROQ_API_KEY ? "groq" : process.env.SAMBANOVA_API_KEY ? "sambanova" : null;
     if (!provider) return NextResponse.json({ error: "برای تولید خلاصه، کلید GROQ_API_KEY، OPENAI_API_KEY یا SAMBANOVA_API_KEY در Render تنظیم نشده است." }, { status: 503 });
     const apiKey = provider === "groq" ? process.env.GROQ_API_KEY! : provider === "openai" ? process.env.OPENAI_API_KEY! : process.env.SAMBANOVA_API_KEY!;
     const endpoint = provider === "groq" ? "https://api.groq.com/openai/v1/chat/completions" : provider === "openai" ? "https://api.openai.com/v1/chat/completions" : "https://api.sambanova.ai/v1/chat/completions";
-    const model = provider === "groq" ? (process.env.GROQ_MODEL || "openai/gpt-oss-120b") : provider === "openai" ? (process.env.OPENAI_MODEL || "gpt-4.1-mini") : (process.env.SAMBANOVA_MODEL || "Meta-Llama-3.3-70B-Instruct");
+    const model = provider === "groq" ? (process.env.GROQ_MODEL || "openai/gpt-oss-120b") : provider === "openai" ? (process.env.OPENAI_MODEL || "gpt-6.1-sol") : (process.env.SAMBANOVA_MODEL || "Meta-Llama-3.3-70B-Instruct");
     const ai = await fetch(endpoint, {
       method: "POST",
       headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model, temperature: 0.1, max_tokens: 2200,
+        model,
+        ...(provider === "openai" ? { max_completion_tokens: 2200 } : { temperature: 0.1, max_tokens: 2200 }),
         messages: [
           { role: "system", content: "You are a precise executive Slack analyst. Analyze only the supplied Slack messages from the last seven days. Respond in Persian. Separate confirmed decisions from suggestions. Never invent owners or deadlines; mark missing values as نامشخص. Return concise Markdown with sections: خلاصه مهم، تصمیمات، مسئولان و تعهدات، گام‌های بعدی، موارد نیازمند پیگیری. Mention message timestamps or Slack user IDs when useful." },
           { role: "user", content: "Workspace: " + integration.team_name + "\nChannel: #" + info.channel.name + "\nMessages:\n" + transcript }
