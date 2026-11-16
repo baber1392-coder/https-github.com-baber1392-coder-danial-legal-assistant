@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const model = provider === "gemini" ? (process.env.GEMINI_MODEL || "gemini-2.5-flash") : provider === "groq" ? (process.env.GROQ_MODEL || "openai/gpt-oss-120b") : provider === "openai" ? (process.env.OPENAI_MODEL || "gpt-6.1-sol") : (process.env.SAMBANOVA_MODEL || "Meta-Llama-3.3-70B-Instruct");
     const messages = [
       { role: "system", content: "You are a precise executive Slack analyst. Analyze only the supplied Slack messages from the last seven days. Respond in Persian. Separate confirmed decisions from suggestions. Never invent owners or deadlines; mark missing values as نامشخص. Return concise Markdown with sections: خلاصه مهم، تصمیمات، مسئولان و تعهدات، گام‌های بعدی، موارد نیازمند پیگیری. Mention message timestamps or Slack user IDs when useful." },
-      { role: "user", content: "Workspace: " + integration.team_name + "\\nChannel: #" + info.channel.name + "\\nMessages:\\n" + transcript }
+      { role: "user", content: "Workspace: " + integration.team_name + "\nChannel: #" + info.channel.name + "\nMessages:\n" + transcript }
     ];
     let ai: Response;
     if (provider === "gemini") {
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
         console.error("Slack summary Gemini failed", { status: gemini.status, message: geminiResult?.error?.message ?? "unknown" });
         return NextResponse.json({ error: gemini.status === 429 ? "سهمیه رایگان Gemini برای خلاصه Slack به سقف رسیده است." : "Gemini نتوانست خلاصه Slack را تولید کند؛ کلید و دسترسی بررسی شود." }, { status: gemini.status === 429 ? 429 : 502 });
       }
-      const summaryText = (geminiResult.candidates?.[0]?.content?.parts ?? []).map((part: { text?: string }) => part.text ?? "").join("\\n").trim();
+      const summaryText = (geminiResult.candidates?.[0]?.content?.parts ?? []).map((part: { text?: string }) => part.text ?? "").join("\n").trim();
       if (!summaryText) return NextResponse.json({ error: "پاسخ متنی از Gemini دریافت نشد." }, { status: 502 });
       ai = new Response(JSON.stringify({ choices: [{ message: { content: summaryText } }] }), { status: 200, headers: { "Content-Type": "application/json" } });
     } else {
