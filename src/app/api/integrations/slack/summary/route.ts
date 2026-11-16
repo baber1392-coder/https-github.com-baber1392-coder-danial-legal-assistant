@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       return "[" + date + "] " + (m.user ? "<@" + m.user + ">" : "Slack") + ": " + (m.text ?? "");
     }).join("\n").slice(0, 45000);
 
-    const provider = process.env.OPENAI_API_KEY ? "openai" : process.env.GROQ_API_KEY ? "groq" : process.env.SAMBANOVA_API_KEY ? "sambanova" : null;
+    const provider = process.env.GROQ_API_KEY ? "groq" : process.env.SAMBANOVA_API_KEY ? "sambanova" : process.env.OPENAI_API_KEY ? "openai" : null;
     if (!provider) return NextResponse.json({ error: "برای تولید خلاصه، یکی از کلیدهای OPENAI_API_KEY، GROQ_API_KEY یا SAMBANOVA_API_KEY در Render تنظیم نشده است." }, { status: 503 });
     const model = provider === "groq" ? (process.env.GROQ_MODEL || "openai/gpt-oss-120b") : provider === "openai" ? (process.env.OPENAI_MODEL || "gpt-6.1-sol") : (process.env.SAMBANOVA_MODEL || "Meta-Llama-3.3-70B-Instruct");
     const messages = [
