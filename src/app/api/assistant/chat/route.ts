@@ -169,7 +169,8 @@ export async function POST(request: NextRequest) {
   const context = await getOfficeContext();
   if (isResponse(context)) return context;
 
-  const provider = process.env.GROQ_API_KEY ? "groq" : process.env.GEMINI_API_KEY ? "gemini" : process.env.OPENAI_API_KEY ? "openai" : process.env.SAMBANOVA_API_KEY ? "sambanova" : null;
+  // Prefer the explicitly configured OpenAI API key. Other providers are fallbacks only.
+  const provider = process.env.OPENAI_API_KEY ? "openai" : process.env.GROQ_API_KEY ? "groq" : process.env.GEMINI_API_KEY ? "gemini" : process.env.SAMBANOVA_API_KEY ? "sambanova" : null;
   if (!provider) {
     return NextResponse.json(
       { error: "مدل هوش مصنوعی پیکربندی نشده است. مدیر سامانه باید یکی از کلیدهای SAMBANOVA_API_KEY، GROQ_API_KEY، GEMINI_API_KEY یا OPENAI_API_KEY را در Environment سرویس Render ثبت کند." },
@@ -398,7 +399,7 @@ export async function POST(request: NextRequest) {
       ? (process.env.GROQ_MODEL || "openai/gpt-oss-120b")
       : provider === "gemini"
       ? (process.env.GEMINI_MODEL || "gemini-2.5-flash")
-      : (process.env.OPENAI_MODEL || "gpt-6-astra");
+      : (process.env.OPENAI_MODEL || "gpt-6.1-sol");
   const useWebSearch = body.useWebSearch === true;
   let assistantText = "";
   let webResearchContext = "";
