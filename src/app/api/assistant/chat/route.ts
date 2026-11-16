@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
   const context = await getOfficeContext();
   if (isResponse(context)) return context;
 
-  const provider = process.env.SAMBANOVA_API_KEY ? "sambanova" : process.env.GROQ_API_KEY ? "groq" : process.env.GEMINI_API_KEY ? "gemini" : process.env.OPENAI_API_KEY ? "openai" : null;
+  const provider = process.env.GROQ_API_KEY ? "groq" : process.env.GEMINI_API_KEY ? "gemini" : process.env.OPENAI_API_KEY ? "openai" : process.env.SAMBANOVA_API_KEY ? "sambanova" : null;
   if (!provider) {
     return NextResponse.json(
       { error: "مدل هوش مصنوعی پیکربندی نشده است. مدیر سامانه باید یکی از کلیدهای SAMBANOVA_API_KEY، GROQ_API_KEY، GEMINI_API_KEY یا OPENAI_API_KEY را در Environment سرویس Render ثبت کند." },
@@ -259,7 +259,7 @@ export async function POST(request: NextRequest) {
     .eq("office_id", context.officeId)
     .eq("created_by", context.user.id)
     .order("created_at", { ascending: false })
-    .limit(16);
+    .limit(10);
 
   if (historyError) {
     return NextResponse.json({ error: "بازیابی تاریخچه گفتگو انجام نشد." }, { status: 500 });
@@ -436,7 +436,7 @@ export async function POST(request: NextRequest) {
           "Authorization": `Bearer ${process.env.SAMBANOVA_API_KEY}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ model, messages, temperature: 0.2, max_tokens: 3000, stream: false }),
+        body: JSON.stringify({ model, messages, temperature: 0.2, max_tokens: 2000, stream: false }),
         cache: "no-store",
         signal: AbortSignal.timeout(90000),
       });
@@ -469,7 +469,7 @@ export async function POST(request: NextRequest) {
           "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ model, messages, temperature: 0.2, max_tokens: 3000, stream: false }),
+        body: JSON.stringify({ model, messages, temperature: 0.2, max_tokens: 2000, stream: false }),
         cache: "no-store",
         signal: AbortSignal.timeout(90000),
       });
@@ -506,7 +506,7 @@ export async function POST(request: NextRequest) {
               parts: [{ text: SYSTEM_INSTRUCTIONS + (caseContext ? "\n\n" + caseContext : "") + researchInstructions }],
             },
             contents,
-            generationConfig: { maxOutputTokens: 3000, temperature: 0.2 },
+            generationConfig: { maxOutputTokens: 2000, temperature: 0.2 },
           }),
           cache: "no-store",
           signal: AbortSignal.timeout(90000),
@@ -542,7 +542,7 @@ export async function POST(request: NextRequest) {
         instructions: SYSTEM_INSTRUCTIONS + (caseContext ? "\n\n" + caseContext : "") + researchInstructions,
         input,
         store: false,
-        max_output_tokens: 3000,
+        max_output_tokens: 2000,
       };
       if (useWebSearch && !process.env.FIRECRAWL_API_KEY) payload.tools = [{ type: "web_search" }];
 
