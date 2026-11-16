@@ -24,10 +24,10 @@ export async function POST(request: NextRequest) {
     const history = await slackApi<{ messages?: SlackMessage[]; has_more?: boolean }>(token, "conversations.history", {
       channel: channelId, oldest, limit: "100", inclusive: "true"
     });
-    const messages = (history.messages ?? []).filter((m) => typeof m.text === "string" && m.text.trim());
-    if (!messages.length) return NextResponse.json({ channel: info.channel.name, messageCount: 0, summary: "در بازه هفت روز گذشته پیام قابل تحلیل در این کانال بازیابی نشد.", decisions: [], owners: [], nextSteps: [], truncated: Boolean(history.has_more) });
+    const slackMessages = (history.messages ?? []).filter((m) => typeof m.text === "string" && m.text.trim());
+    if (!slackMessages.length) return NextResponse.json({ channel: info.channel.name, messageCount: 0, summary: "در بازه هفت روز گذشته پیام قابل تحلیل در این کانال بازیابی نشد.", decisions: [], owners: [], nextSteps: [], truncated: Boolean(history.has_more) });
 
-    const transcript = messages.reverse().map((m) => {
+    const transcript = slackMessages.reverse().map((m) => {
       const date = m.ts ? new Date(Number(m.ts) * 1000).toISOString() : "";
       return "[" + date + "] " + (m.user ? "<@" + m.user + ">" : "Slack") + ": " + (m.text ?? "");
     }).join("\n").slice(0, 45000);
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     const text = result.choices?.[0]?.message?.content;
     if (typeof text !== "string" || !text.trim()) return NextResponse.json({ error: "پاسخ خلاصه‌ساز خالی بود." }, { status: 502 });
     return NextResponse.json({
-      channel: info.channel.name, messageCount: messages.length, summary: text,
+      channel: info.channel.name, messageCount: slackMessages.length, summary: text,
       truncated: Boolean(history.has_more) || transcript.length >= 45000,
       windowDays: 7, provider, generatedAt: new Date().toISOString()
     }, { headers: { "Cache-Control": "no-store" } });
