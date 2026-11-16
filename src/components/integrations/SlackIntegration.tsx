@@ -114,7 +114,7 @@ export default function SlackIntegration() {
         </div>
         {!loading && !status?.appConfigured && (
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-900">
-            برای فعال‌سازی دکمه اتصال، مدیر سامانه باید سه متغیر محرمانه SLACK_CLIENT_ID، SLACK_CLIENT_SECRET و SLACK_TOKEN_ENCRYPTION_KEY را در Environment سرویس Render ثبت کند. این مقادیر نباید در کد یا مخزن GitHub قرار گیرند.
+            برای تکمیل نصب، یک Slack App از روی <a className="underline font-semibold" href="https://github.com/baber1392-coder/https-github.com-baber1392-coder-danial-legal-assistant/blob/main/config/slack-app-manifest.json" target="_blank" rel="noreferrer">مانیفست آماده برنامه</a> بسازید و آن را در Workspace نصب کنید. سپس فقط دو مقدار SLACK_CLIENT_ID و SLACK_CLIENT_SECRET را در Environment سرویس Render ثبت کنید. کلید رمزنگاری و نشانی بازگشت OAuth قبلاً در Render تنظیم شده‌اند. آدرس Redirect باید دقیقاً https://danial-legal-assistant.onrender.com/api/integrations/slack/callback باشد. هیچ‌یک از این مقادیر را در چت یا کد عمومی قرار ندهید.
           </div>
         )}
         {status?.connected && <div className="mt-3 text-xs text-slate-500">مجوزهای ثبت‌شده: {status.scopes.join("، ") || "اطلاعاتی ثبت نشده است"}</div>}
