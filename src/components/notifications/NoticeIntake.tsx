@@ -24,7 +24,7 @@ type DeadlineItem = {
 type Props = { officeId: string; cases: CaseOption[]; notices: NoticeItem[]; deadlines: DeadlineItem[] };
 type OcrWorker = {
   recognize: (input: HTMLCanvasElement | File) => Promise<{ data: { text: string } }>;
-  terminate: () => Promise<void>;
+  terminate: () => Promise<unknown>;
 };
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
@@ -197,8 +197,9 @@ export default function NoticeIntake({ officeId, cases, notices, deadlines }: Pr
       for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
         const pdfPage = await pdfDocument.getPage(pageNumber);
         const textContent = await pdfPage.getTextContent();
-        const selectableText = textContent.items
-          .map((item) => ("str" in item ? item.str : ""))
+        const textItems = textContent.items as unknown as Array<{ str?: unknown }>;
+        const selectableText = textItems
+          .map((item) => (typeof item.str === "string" ? item.str : ""))
           .filter(Boolean)
           .join(" ")
           .trim();
