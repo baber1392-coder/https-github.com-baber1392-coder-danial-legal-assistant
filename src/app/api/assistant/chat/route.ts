@@ -161,8 +161,35 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "دریافت فهرست گفتگوها یا پرونده‌ها انجام نشد." }, { status: 500 });
   }
 
+  const conversations = conversationsResult.data ?? [];
+  const latestConversationId = conversations[0]?.id;
+  let initialMessages: Array<{ id: string; role: string; content: string; created_at: string }> = [];
+
+  // Load the newest conversation's transcript with the index response. This avoids
+  // a second browser request and repeated auth/membership lookups on initial render.
+  if (latestConversationId) {
+    const { data: latestMessages, error: latestMessagesError } = await context.supabase
+      .from("ai_chat_messages")
+      .select("id,role,content,created_at")
+      .eq("conversation_id", latestConversationId)
+      .eq("office_id", context.officeId)
+      .eq("created_by", context.user.id)
+      .order("created_at", { ascending: true })
+      .limit(150);
+
+    if (latestMessagesError) {
+      return NextResponse.json({ error: "بازیابی پیام‌های گفتگوی اخیر ممکن نشد." }, { status: 500 });
+    }
+    initialMessages = (latestMessages ?? []).map((item) => ({
+      id: item.id,
+      role: String(item.role),
+      content: item.content,
+      created_at: item.created_at,
+    }));
+  }
+
   return NextResponse.json(
-    { conversations: conversationsResult.data ?? [], cases: casesResult.data ?? [] },
+    { conversations, cases: casesResult.data ?? [], messages: initialMessages },
     { headers: { "Cache-Control": "no-store" } }
   );
 }
