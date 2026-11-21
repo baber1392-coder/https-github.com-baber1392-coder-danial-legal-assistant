@@ -78,8 +78,8 @@ export default function NoticeIntake({ officeId, cases }: Props) {
         "منبع: سامانه ابلاغ عدل ایران",
         noticeDate.trim() ? `تاریخ مندرج در ابلاغیه: ${noticeDate.trim()}` : "",
         `شناسه سند بایگانی: ${document.id}`,
-        noticeText.trim() ? `متن واردشده توسط کاربر:\\n${noticeText.trim()}` : "متن ابلاغیه هنوز استخراج نشده است.",
-      ].filter(Boolean).join("\\n\\n");
+        noticeText.trim() ? `متن واردشده توسط کاربر:\n${noticeText.trim()}` : "متن ابلاغیه هنوز استخراج نشده است.",
+      ].filter(Boolean).join("\n\n");
 
       const { error: eventError } = await supabase.from("case_events").insert({
         office_id: officeId,
