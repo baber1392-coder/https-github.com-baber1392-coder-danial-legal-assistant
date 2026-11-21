@@ -240,3 +240,62 @@ tr:hover td { background:#fbfaf7; }
 @media(prefers-reduced-motion:reduce) {
   *,*::before,*::after { transition:none!important; scroll-behavior:auto!important; }
 }
+ 
+/* Notice intake: document archive and deadline alerts */
+.notice-document,
+.notice-deadline {
+  border: 1px solid #e5eaf0;
+  border-radius: 14px;
+  padding: 15px;
+  background: #fff;
+}
+.notice-deadline-danger {
+  border-color: #efc4c4;
+  background: #fff8f8;
+}
+.notice-deadline-warning {
+  border-color: #f0dfbd;
+  background: #fffbf3;
+}
+.notice-deadline-neutral {
+  border-color: #e5eaf0;
+  background: #fff;
+}
+.notice-state,
+.notice-extraction-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 11px;
+  line-height: 1.6;
+  background: #edf2f6;
+  color: #40566f;
+}
+.notice-state-danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.notice-state-warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+.notice-state-neutral {
+  background: #edf2f6;
+  color: #40566f;
+}
+.notice-extracted-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 360px;
+  overflow: auto;
+  direction: rtl;
+  line-height: 2;
+  background: #f8fafc;
+  border: 1px solid #e5eaf0;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 12px;
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 12px;
+}

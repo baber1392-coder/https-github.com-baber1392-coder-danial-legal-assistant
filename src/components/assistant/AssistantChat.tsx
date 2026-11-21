@@ -13,6 +13,8 @@ export default function AssistantChat() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [cases, setCases] = useState<CaseOption[]>([]);
   const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
+  const [slackLoading, setSlackLoading] = useState(false);
+  const [slackError, setSlackError] = useState("");
   const [slackChannelId, setSlackChannelId] = useState("");
   const [useSlackContext, setUseSlackContext] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -64,13 +66,37 @@ export default function AssistantChat() {
 
   useEffect(() => { void loadIndex(); }, [loadIndex]);
   useEffect(() => {
+    if (!useSlackContext || slackChannels.length > 0) {
+      if (!useSlackContext) setSlackLoading(false);
+      return;
+    }
+
     let active = true;
+    setSlackLoading(true);
+    setSlackError("");
     void fetch("/api/integrations/slack/channels", { cache: "no-store" })
-      .then(async (response) => response.ok ? response.json() : null)
-      .then((data) => { if (active) setSlackChannels(data?.channels ?? []); })
-      .catch(() => { if (active) setSlackChannels([]); });
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.error || "دریافت کانال‌های Slack انجام نشد.");
+        return data;
+      })
+      .then((data) => {
+        if (!active) return;
+        const channels = data?.channels ?? [];
+        setSlackChannels(channels);
+        if (channels.length === 0) setSlackError("کانالی برای نمایش وجود ندارد یا اتصال Slack برقرار نیست.");
+      })
+      .catch((err) => {
+        if (!active) return;
+        setSlackChannels([]);
+        setSlackError(err instanceof Error ? err.message : "دریافت کانال‌های Slack انجام نشد.");
+      })
+      .finally(() => {
+        if (active) setSlackLoading(false);
+      });
+
     return () => { active = false; };
-  }, []);
+  }, [useSlackContext, slackChannels.length]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages, sending]);
 
   const newConversation = () => {
@@ -181,14 +207,23 @@ export default function AssistantChat() {
               ))}
             </select>
           </label>
-          {slackChannels.length > 0 && (
+          <label className="assistant-toggle">
+            <input type="checkbox" checked={useSlackContext} onChange={(e) => setUseSlackContext(e.target.checked)} />
+            <MessageCircle size={16} /> استفاده از Slack در پاسخ
+          </label>
+          {useSlackContext && (
             <label className="assistant-control">
-              <input type="checkbox" checked={useSlackContext} onChange={(e) => setUseSlackContext(e.target.checked)} />
-              <span>استفاده از Slack در پاسخ</span>
-              <select className="field-input" value={slackChannelId} onChange={(e) => setSlackChannelId(e.target.value)} disabled={!useSlackContext}>
-                <option value="">انتخاب کانال</option>
-                {slackChannels.map((channel) => <option key={channel.id} value={channel.id}>#{channel.name}{channel.isPrivate ? " · خصوصی" : ""}{!channel.isMember ? " · بدون عضویت برنامه" : ""}</option>)}
-              </select>
+              <span>کانال Slack</span>
+              {slackLoading ? (
+                <span className="muted text-sm">در حال دریافت کانال‌ها...</span>
+              ) : slackChannels.length > 0 ? (
+                <select className="field-input" value={slackChannelId} onChange={(e) => setSlackChannelId(e.target.value)}>
+                  <option value="">انتخاب کانال</option>
+                  {slackChannels.map((channel) => <option key={channel.id} value={channel.id}>#{channel.name}{channel.isPrivate ? " · خصوصی" : ""}{!channel.isMember ? " · بدون عضویت برنامه" : ""}</option>)}
+                </select>
+              ) : (
+                <span className="muted text-sm">{slackError || "کانالی برای نمایش وجود ندارد."}</span>
+              )}
             </label>
           )}
           <label className="assistant-toggle">
