@@ -242,7 +242,8 @@ export default function NoticeIntake({ officeId, cases, notices, deadlines }: Pr
       setOcrMessage("استخراج متن کامل نشد؛ می‌توانید متن را دستی وارد کنید یا فایل را بدون متن ثبت نمایید.");
       setError(err instanceof Error ? err.message : "استخراج متن با خطای نامشخص مواجه شد.");
     } finally {
-      if (worker) await worker.terminate().catch(() => undefined);
+      const workerToTerminate = worker as OcrWorker | null;
+      if (workerToTerminate) await workerToTerminate.terminate().catch(() => undefined);
       if (pdfDocument) await pdfDocument.destroy().catch(() => undefined);
       setOcrBusy(false);
     }
