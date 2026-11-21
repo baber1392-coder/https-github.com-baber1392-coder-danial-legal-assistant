@@ -37,7 +37,7 @@ export default function AssistantChat() {
       if (data.conversations?.length) {
         const first = data.conversations[0];
         setConversationId(first.id);
-        await loadConversation(first.id);
+        setMessages(data.messages ?? []);
       } else {
         setConversationId(null);
         setMessages([]);
