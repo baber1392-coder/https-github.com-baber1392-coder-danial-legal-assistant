@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fa" dir="rtl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#102a43"><meta name="description" content="دانیال GIS؛ ابزار بررسی مکانی و جانمایی مقدماتی املاک">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="./styles.css"><title>دانیال GIS</title></head>
+<body>
+<header><div class="brand"><img src="./icon.svg" alt=""><div><b>دانیال GIS</b><small>سامانه بررسی و جانمایی املاک</small></div></div><span id="status">آماده</span></header>
+<main><section class="sidebar">
+<div class="intro"><h1>میز کار مکانی</h1><p>انتخاب نقطه، ترسیم محدوده و تحلیل مقدماتی</p></div>
+<article><h2>جست‌وجوی مختصات</h2>
+<label for="kind">نوع مختصات</label><select id="kind"><option value="ll">طول و عرض جغرافیایی (WGS84)</option><option value="utm">UTM (متر)</option></select>
+<div class="cols"><div><label id="la" for="a">عرض جغرافیایی</label><input id="a" placeholder="36.842" inputmode="decimal"></div><div><label id="lb" for="b">طول جغرافیایی</label><input id="b" placeholder="54.435" inputmode="decimal"></div></div>
+<div id="utm" class="cols hide"><div><label for="zone">زون</label><input id="zone" type="number" min="1" max="60" value="40"></div><div><label for="hem">نیم‌کره</label><select id="hem"><option value="N">شمالی</option><option value="S">جنوبی</option></select></div></div>
+<button id="go" class="primary">نمایش روی نقشه</button></article>
+<article><h2>ابزار ترسیم</h2><div class="cols"><button id="point" class="tool active">انتخاب نقطه</button><button id="poly" class="tool">ترسیم پلیگون</button></div>
+<div class="cols"><button id="finish" class="tool">پایان ترسیم</button><button id="undo" class="tool">حذف رأس آخر</button></div>
+<button id="clear" class="outline">پاک‌سازی</button><p id="hint" class="hint">برای انتخاب نقطه روی نقشه کلیک کنید.</p></article>
+<article><h2>غربالگری نامزدهای پلاک</h2><p class="hint">فایل GeoJSON قطعات یا محدوده‌های مرجع را بارگذاری کنید؛ این ابزار فقط نامزدهای مکانی را رتبه‌بندی می‌کند.</p><label class="upload">بارگذاری لایه نامزدها (GeoJSON)<input id="candidateFile" type="file" accept=".json,.geojson,application/geo+json"></label><button id="rankCandidates" class="secondary">رتبه‌بندی نامزدها با محدوده ترسیمی</button><div id="candidateResults" aria-live="polite"></div><p class="hint">امتیاز غربالگری بر پایه همپوشانی جعبه محاطی، نزدیکی مرکز و شباهت مساحت است؛ نه انطباق رسمی حدود.</p></article><article><h2>اطلاعات محدوده</h2><div class="metric"><span>مساحت تقریبی</span><b id="area">—</b></div><div class="metric"><span>محیط تقریبی</span><b id="perimeter">—</b></div><div class="metric"><span>تعداد رأس‌ها</span><b id="count">۰</b></div><div class="metric"><span>مرکز/نقطه</span><b id="center" dir="ltr">—</b></div>
+<button id="export" class="secondary">خروجی GeoJSON</button><label class="upload">بارگذاری GeoJSON<input id="import" type="file" accept=".json,.geojson,application/json,application/geo+json"></label><label class="upload">بارگذاری KML / KMZ<input id="kmlImport" type="file" accept=".kml,.kmz,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz"></label></article>
+<article><h2>پرونده و یادداشت</h2><label for="title">عنوان ملک / پرونده</label><input id="title" placeholder="عنوان بررسی"><label for="note">یادداشت کارشناسی</label><textarea id="note" rows="3" placeholder="منبع مختصات، نقشه و توضیحات..."></textarea><button id="save" class="primary">ذخیره محلی</button><div id="cases"></div></article>
+<p class="foot">نسخه آزمایشی · ذخیره‌سازی فعلاً فقط در همین مرورگر است.</p>
+</section><section class="mapbox"><div class="maphead"><span>نقشه پایه OpenStreetMap</span><span id="coords" dir="ltr">—</span></div><div id="map"></div><div class="mapfoot">این نسخه به سامانه ثبت اسناد یا بانک اطلاعات پلاک‌های ثبتی متصل نیست.</div></section></main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script><script src="./candidate-engine.js"></script><script src="./kml-import.js"></script><script src="./app.js"></script></body></html>
